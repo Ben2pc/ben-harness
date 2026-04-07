@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { checkbox, select, input } from "@inquirer/prompts";
+import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
-import type { SkillsLock, SkillEntry } from "./utils.js";
+import type { SkillsLock } from "./utils.js";
 
 export async function installSkills(packageRoot: string): Promise<void> {
   const sourceLock: SkillsLock = JSON.parse(
@@ -37,65 +37,17 @@ export async function installSkills(packageRoot: string): Promise<void> {
     return;
   }
 
-  if (scope === "project") {
-    await installProjectSkills(packageRoot, sourceLock, selected);
-  } else {
-    await installGlobalSkills(sourceLock, selected);
-  }
-}
+  const globalFlag = scope === "global" ? " -g" : "";
 
-async function installProjectSkills(
-  packageRoot: string,
-  sourceLock: SkillsLock,
-  selected: string[],
-): Promise<void> {
-  const targetDir = await withEsc(input({
-    message: "Skills target directory:",
-    default: process.cwd(),
-  }));
-
-  const resolved = path.resolve(targetDir);
-  const targetLockPath = path.join(resolved, "skills-lock.json");
-
-  // Read existing or create empty
-  let targetLock: SkillsLock = { version: 1, skills: {} };
-  if (fs.existsSync(targetLockPath)) {
-    targetLock = JSON.parse(fs.readFileSync(targetLockPath, "utf-8"));
-  }
-
-  let changed = false;
-
-  for (const name of selected) {
-    const sourceEntry = sourceLock.skills[name];
-    const targetEntry = targetLock.skills[name];
-
-    targetLock.skills[name] = sourceEntry;
-    changed = true;
-  }
-
-  if (changed) {
-    fs.writeFileSync(targetLockPath, JSON.stringify(targetLock, null, 2) + "\n");
-    log.ok("skills-lock.json merged");
-  }
-
-  console.log("\nRunning npx skills experimental_install...\n");
-  exec("npx skills experimental_install", { cwd: resolved, inherit: true });
-  log.ok("Skills installed");
-}
-
-async function installGlobalSkills(
-  sourceLock: SkillsLock,
-  selected: string[],
-): Promise<void> {
   for (const name of selected) {
     const entry = sourceLock.skills[name];
-    console.log(`\nInstalling ${name} globally...`);
+    console.log(`\nInstalling ${name}...`);
     try {
       exec(
-        `npx skills add ${entry.source} -g --skill ${name} --yes`,
+        `npx skills add ${entry.source}${globalFlag} --skill ${name} --agent claude-code codex --yes`,
         { inherit: true },
       );
-      log.ok(`${name}: installed globally`);
+      log.ok(`${name}: installed`);
     } catch {
       log.error(`${name}: failed to install`);
     }
