@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { checkbox, select, confirm, input } from "@inquirer/prompts";
+import { checkbox, select, input } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
 import type { SkillsLock, SkillEntry } from "./utils.js";
 
@@ -69,28 +69,8 @@ async function installProjectSkills(
     const sourceEntry = sourceLock.skills[name];
     const targetEntry = targetLock.skills[name];
 
-    if (!targetEntry) {
-      // New skill
-      targetLock.skills[name] = sourceEntry;
-      changed = true;
-      log.ok(`${name}: added`);
-    } else if (targetEntry.computedHash === sourceEntry.computedHash) {
-      // Same version
-      log.skip(`${name} (up to date)`);
-    } else {
-      // Different hash — prompt update
-      const update = await withEsc(confirm({
-        message: `${name}: hash differs. Update?`,
-        default: true,
-      }));
-      if (update) {
-        targetLock.skills[name] = sourceEntry;
-        changed = true;
-        log.ok(`${name}: updated`);
-      } else {
-        log.skip(`${name} (kept existing)`);
-      }
-    }
+    targetLock.skills[name] = sourceEntry;
+    changed = true;
   }
 
   if (changed) {

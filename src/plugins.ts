@@ -82,7 +82,7 @@ export async function installPlugins(packageRoot: string): Promise<void> {
       return {
         name: `${p.name} — ${p.description}${suffix}`,
         value: p,
-        checked: !scopes,
+        checked: !scopes || !(scopes.includes("user") && scopes.includes("project")),
       };
     }),
   }));
