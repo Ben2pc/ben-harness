@@ -7,10 +7,7 @@
     "ben-harness": "dist/cli.js"
   },
   "files": [
-    "dist",
-    "CLAUDE.md",
-    "skills-lock.json",
-    ".claude/plugins.json"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",

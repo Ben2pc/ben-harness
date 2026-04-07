@@ -1,5 +1,7 @@
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 // --- Types ---
@@ -48,6 +50,36 @@ export function exec(
     stdio: opts?.inherit ? "inherit" : "pipe",
     encoding: "utf-8",
   }) as string;
+}
+
+// --- Remote content ---
+
+const REPO = "Ben2pc/ben-harness";
+const BRANCH = "main";
+const CONTENT_FILES = [
+  "CLAUDE.md",
+  "skills-lock.json",
+  ".claude/plugins.json",
+];
+
+async function fetchFile(file: string): Promise<string> {
+  const url = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${file}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  return res.text();
+}
+
+export async function fetchContentRoot(): Promise<string> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ben-harness-"));
+
+  for (const file of CONTENT_FILES) {
+    const content = await fetchFile(file);
+    const dest = path.join(tmpDir, file);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, content);
+  }
+
+  return tmpDir;
 }
 
 // --- ESC support ---

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { checkbox } from "@inquirer/prompts";
-import { getPackageRoot, withEsc } from "./utils.js";
+import { fetchContentRoot, withEsc } from "./utils.js";
 import { installWorkflow } from "./workflow.js";
 import { installSkills } from "./skills.js";
 import { installPlugins } from "./plugins.js";
@@ -9,7 +9,9 @@ import { installPlugins } from "./plugins.js";
 async function main(): Promise<void> {
   console.log("\nben-harness — Claude Code Harness Installer\n");
 
-  const packageRoot = getPackageRoot();
+  console.log("Fetching latest content from GitHub...");
+  const packageRoot = await fetchContentRoot();
+  console.log("");
 
   const moduleTypes = await withEsc(checkbox({
     message: "Select module types to install:",
