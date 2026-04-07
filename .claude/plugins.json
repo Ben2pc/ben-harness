@@ -1,0 +1,28 @@
+{
+  "plugins": [
+    {
+      "name": "skill-creator",
+      "package": "skill-creator@claude-plugins-official",
+      "description": "Create and manage custom skills"
+    },
+    {
+      "name": "claude-md-management",
+      "package": "claude-md-management@claude-plugins-official",
+      "description": "Audit and improve CLAUDE.md files"
+    },
+    {
+      "name": "hookify",
+      "package": "hookify@claude-plugins-official",
+      "description": "Create hooks from conversation analysis"
+    },
+    {
+      "name": "codex",
+      "package": "codex@openai-codex",
+      "description": "Cross-model collaboration with Codex",
+      "marketplace": {
+        "name": "openai-codex",
+        "source": "openai/codex-plugin-cc"
+      }
+    }
+  ]
+}

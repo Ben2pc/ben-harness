@@ -1,0 +1,30 @@
+{
+  "name": "ben-harness",
+  "version": "0.1.0",
+  "description": "Interactive CLI to install Claude Code harness modules (Workflow, Skills, Plugins)",
+  "type": "module",
+  "bin": {
+    "ben-harness": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "CLAUDE.md",
+    "skills-lock.json",
+    ".claude/plugins.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

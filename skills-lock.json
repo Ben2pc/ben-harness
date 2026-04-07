@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "f260c775073816860fef8a37c032ac77e2ff5821"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "828c239ac986cc1fc7edd10292f66e4a3640e9c0"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "98904a7d8e0e04b9bd46220b9b17298f45fe0b72"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "ceb2f1f67f4cadb29b32a06e54d3d0be832071f5"
+    },
+    "planning-with-files": {
+      "source": "OthmanAdi/planning-with-files",
+      "sourceType": "github",
+      "computedHash": "8b59ccb8c1345f748ea71fe5e23a1a0828036752"
+    },
+    "playwright-cli": {
+      "source": "microsoft/playwright-cli",
+      "sourceType": "github",
+      "computedHash": "a45a2cf6381af0007a8d88d3b95f798565ffc5a5"
+    }
+  }
+}
