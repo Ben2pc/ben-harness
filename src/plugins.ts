@@ -4,23 +4,28 @@ import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
 import type { PluginsConfig, PluginDef } from "./utils.js";
 
+interface PluginInfo {
+  id: string;
+  scope: string;
+  projectPath?: string;
+}
+
 function getInstalledPlugins(): Map<string, string[]> {
   try {
-    const output = exec("claude plugins list");
+    const output = exec("claude plugins list --json");
+    const plugins: PluginInfo[] = JSON.parse(output);
+    const cwd = process.cwd();
     const installed = new Map<string, string[]>();
-    let currentPlugin = "";
-    for (const line of output.split("\n")) {
-      const pluginMatch = line.match(/❯\s+(\S+)/);
-      if (pluginMatch) {
-        currentPlugin = pluginMatch[1];
-      }
-      const scopeMatch = line.match(/Scope:\s+(\w+)/);
-      if (scopeMatch && currentPlugin) {
-        const scopes = installed.get(currentPlugin) || [];
-        scopes.push(scopeMatch[1]);
-        installed.set(currentPlugin, scopes);
-      }
+
+    for (const p of plugins) {
+      // project scope 只匹配当前目录
+      if (p.scope === "project" && p.projectPath !== cwd) continue;
+
+      const scopes = installed.get(p.id) || [];
+      scopes.push(p.scope);
+      installed.set(p.id, scopes);
     }
+
     return installed;
   } catch {
     return new Map();
