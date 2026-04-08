@@ -1,5 +1,3 @@
-English | [中文](CLAUDE.zh-CN.md)
-
 # General Workflow (v0.1.0)
 
 1. Requirement Clarification: Use `brainstorming` to clarify requirements for new features. **Requirements should focus on "what to do" and acceptance criteria, not specific technical paths.** For product features, prioritize "Why" and let the implementation-stage Agent decide how.
