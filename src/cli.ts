@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { checkbox } from "@inquirer/prompts";
-import { fetchContentRoot, withEsc } from "./utils.js";
+import { fetchContentRoot, printBanner, withEsc } from "./utils.js";
 import { installWorkflow } from "./workflow.js";
 import { installSkills, installRecommendedSkills } from "./skills.js";
 import { installPlugins } from "./plugins.js";
 
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
+
 async function main(): Promise<void> {
-  console.log("\nben-harness — Claude Code Harness Installer\n");
+  printBanner(version);
+  console.log("");
 
   if (process.env.DEV === "1") {
     console.log("Using local content (DEV mode)\n");

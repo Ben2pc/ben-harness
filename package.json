@@ -18,9 +18,11 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.0.0"
+    "@inquirer/prompts": "^8.0.0",
+    "gradient-string": "^3.0.0"
   },
   "devDependencies": {
+    "@types/gradient-string": "^1.1.6",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }
