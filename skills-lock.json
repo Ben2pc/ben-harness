@@ -6,6 +6,16 @@
       "sourceType": "github",
       "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
     },
+    "claude-code-agent": {
+      "source": "Ben2pc/g-claude-code-plugins",
+      "sourceType": "github",
+      "computedHash": "e6ab7d4a6811795d59998333930641efd1fc1aa0ed8c5c0605ca995a764a5792"
+    },
+    "codex-agent": {
+      "source": "Ben2pc/g-claude-code-plugins",
+      "sourceType": "github",
+      "computedHash": "3ff3053bae5b08b5700c8fe34314e59ee3c8063bd7beefb23b35cc01d7902e36"
+    },
     "planning-with-files": {
       "source": "OthmanAdi/planning-with-files",
       "sourceType": "github",

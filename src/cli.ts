@@ -3,15 +3,19 @@
 import { checkbox } from "@inquirer/prompts";
 import { fetchContentRoot, withEsc } from "./utils.js";
 import { installWorkflow } from "./workflow.js";
-import { installSkills } from "./skills.js";
+import { installSkills, installRecommendedSkills } from "./skills.js";
 import { installPlugins } from "./plugins.js";
 
 async function main(): Promise<void> {
   console.log("\nben-harness — Claude Code Harness Installer\n");
 
-  console.log("Fetching latest content from GitHub...");
+  if (process.env.DEV) {
+    console.log("Using local content (DEV mode)\n");
+  } else {
+    console.log("Fetching latest content from GitHub...");
+  }
   const packageRoot = await fetchContentRoot();
-  console.log("");
+  if (!process.env.DEV) console.log("");
 
   const moduleTypes = await withEsc(checkbox({
     message: "Select module types to install:",
@@ -24,6 +28,11 @@ async function main(): Promise<void> {
       {
         name: "Skills — Development process skills (brainstorming, TDD, debugging...)",
         value: "skills" as const,
+        checked: true,
+      },
+      {
+        name: "Recommended Skills — Extra utility skills (claude-code-agent, codex-agent...)",
+        value: "recommended" as const,
         checked: true,
       },
       {
@@ -47,6 +56,11 @@ async function main(): Promise<void> {
   if (moduleTypes.includes("skills")) {
     console.log("\n--- Skills ---\n");
     await installSkills(packageRoot);
+  }
+
+  if (moduleTypes.includes("recommended")) {
+    console.log("\n--- Recommended Skills ---\n");
+    await installRecommendedSkills(packageRoot);
   }
 
   if (moduleTypes.includes("plugins")) {

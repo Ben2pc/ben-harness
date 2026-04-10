@@ -1,17 +1,28 @@
 import fs from "node:fs";
 import path from "node:path";
 import { checkbox, select } from "@inquirer/prompts";
-import { exec, log, withEsc } from "./utils.js";
+import {
+  exec,
+  log,
+  withEsc,
+  WORKFLOW_SKILLS,
+  RECOMMENDED_DESCRIPTIONS,
+} from "./utils.js";
 import type { SkillsLock } from "./utils.js";
 
-export async function installSkills(packageRoot: string): Promise<void> {
-  const sourceLock: SkillsLock = JSON.parse(
+function loadLock(packageRoot: string): SkillsLock {
+  return JSON.parse(
     fs.readFileSync(path.join(packageRoot, "skills-lock.json"), "utf-8"),
   );
+}
 
-  const sourceEntries = Object.entries(sourceLock.skills);
-  if (sourceEntries.length === 0) {
-    log.warn("No skills found in skills-lock.json");
+async function installSelected(
+  entries: [string, { source: string }][],
+  defaultChecked: boolean,
+  descriptionMap?: Record<string, string>,
+): Promise<void> {
+  if (entries.length === 0) {
+    log.warn("No skills found");
     return;
   }
 
@@ -25,11 +36,11 @@ export async function installSkills(packageRoot: string): Promise<void> {
 
   const selected = await withEsc(checkbox({
     message: "Select skills to install:",
-    choices: sourceEntries.map(([name, entry]) => ({
-      name: `${name} (${entry.source})`,
-      value: name,
-      checked: true,
-    })),
+    choices: entries.map(([name, entry]) => {
+      const desc = descriptionMap?.[name];
+      const label = desc ? `${name} — ${desc}` : `${name} (${entry.source})`;
+      return { name: label, value: name, checked: defaultChecked };
+    }),
   }));
 
   if (selected.length === 0) {
@@ -38,9 +49,10 @@ export async function installSkills(packageRoot: string): Promise<void> {
   }
 
   const globalFlag = scope === "global" ? " -g" : "";
+  const lock = Object.fromEntries(entries);
 
   for (const name of selected) {
-    const entry = sourceLock.skills[name];
+    const entry = lock[name];
     console.log(`\nInstalling ${name}...`);
     try {
       exec(
@@ -52,4 +64,22 @@ export async function installSkills(packageRoot: string): Promise<void> {
       log.error(`${name}: failed to install`);
     }
   }
+}
+
+export async function installSkills(packageRoot: string): Promise<void> {
+  const lock = loadLock(packageRoot);
+  const entries = Object.entries(lock.skills).filter(
+    ([name]) => WORKFLOW_SKILLS.includes(name),
+  );
+  await installSelected(entries, true);
+}
+
+export async function installRecommendedSkills(
+  packageRoot: string,
+): Promise<void> {
+  const lock = loadLock(packageRoot);
+  const entries = Object.entries(lock.skills).filter(
+    ([name]) => !WORKFLOW_SKILLS.includes(name),
+  );
+  await installSelected(entries, false, RECOMMENDED_DESCRIPTIONS);
 }
