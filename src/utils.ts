@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import gradient from "gradient-string";
 
 // --- Types ---
 
@@ -141,7 +140,12 @@ const ORIGINAL_ART = [
   "  █▀█ █▄█ █▀▄ █ █▄█ █▀█",
 ];
 
-const WINTER_SKY = ["#2C3E6B", "#5B7EA1", "#D4A84B"];
+// Winter Sky: #2C3E6B (靛蓝) → #5B7EA1 (钢蓝) → #D4A84B (暖金)
+const GRADIENT_STOPS: [number, number, number][] = [
+  [0x2C, 0x3E, 0x6B],
+  [0x5B, 0x7E, 0xA1],
+  [0xD4, 0xA8, 0x4B],
+];
 const SHADOW_COLOR = "\x1b[38;5;238m";
 const SHADOW_DX = 1;
 const SHADOW_DY = 1;
@@ -209,9 +213,12 @@ function renderBannerWithShadow(pixels: number[][], dx: number, dy: number): str
       if (ch === " ") { line += " "; continue; }
       if (t === 1 || b === 1) {
         const ratio = totalW <= 1 ? 0 : x / (totalW - 1);
-        const r = Math.round(44 + ratio * (212 - 44));
-        const g = Math.round(62 + ratio * (168 - 62));
-        const bv = Math.round(107 + ratio * (75 - 107));
+        const seg = ratio < 0.5 ? 0 : 1;
+        const localT = seg === 0 ? ratio * 2 : (ratio - 0.5) * 2;
+        const from = GRADIENT_STOPS[seg], to = GRADIENT_STOPS[seg + 1];
+        const r = Math.round(from[0] + localT * (to[0] - from[0]));
+        const g = Math.round(from[1] + localT * (to[1] - from[1]));
+        const bv = Math.round(from[2] + localT * (to[2] - from[2]));
         line += `\x1b[38;2;${r};${g};${bv}m${ch}${reset}`;
       } else {
         line += `${SHADOW_COLOR}${ch}${reset}`;
