@@ -1,6 +1,6 @@
 English | [中文](README.zh-CN.md)
 
-# ben-harness
+# auriga-cli
 
 A modular Claude Code harness — install only the parts you need.
 
@@ -17,7 +17,7 @@ This repo itself is a fully configured harness project. You can clone it to see 
 ## Quick Start
 
 ```bash
-npx ben-harness
+npx auriga-cli
 ```
 
 Interactive menu — select what to install:

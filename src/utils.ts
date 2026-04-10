@@ -68,7 +68,7 @@ export const LANGUAGES: LangOption[] = [
 
 // --- Remote content ---
 
-const REPO = "Ben2pc/ben-harness";
+const REPO = "Ben2pc/auriga-cli";
 const BRANCH = "main";
 const CONTENT_FILES = [
   "CLAUDE.md",
@@ -88,7 +88,7 @@ export async function fetchContentRoot(): Promise<string> {
     return getPackageRoot();
   }
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ben-harness-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "auriga-cli-"));
 
   for (const file of CONTENT_FILES) {
     const content = await fetchFile(file);

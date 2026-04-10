@@ -1,10 +1,10 @@
-# ben-harness Design Spec
+# auriga-cli Design Spec
 
 ## Overview
 
-ben-harness 是一个公开的 GitHub 仓库，用于将个人的 Claude Code harness engineering（Workflow、Skills、Plugins）模块化共享给团队和社区。
+auriga-cli 是一个公开的 GitHub 仓库，用于将个人的 Claude Code harness engineering（Workflow、Skills、Plugins）模块化共享给团队和社区。
 
-仓库本身就是一个完整安装好 harness 的参考项目（所见即所得），同时内置 CLI 安装器，支持 `npx ben-harness` 交互式按需安装到任意目标项目。
+仓库本身就是一个完整安装好 harness 的参考项目（所见即所得），同时内置 CLI 安装器，支持 `npx auriga-cli` 交互式按需安装到任意目标项目。
 
 ## 核心设计决策
 
@@ -16,8 +16,8 @@ ben-harness 是一个公开的 GitHub 仓库，用于将个人的 Claude Code ha
 ## 仓库结构
 
 ```
-ben-harness/
-├── package.json               # name: "ben-harness", bin: "ben-harness"
+auriga-cli/
+├── package.json               # name: "auriga-cli", bin: "auriga-cli"
 ├── tsconfig.json
 ├── src/
 │   └── cli.ts                 # CLI 安装器入口
@@ -93,7 +93,7 @@ ben-harness/
 ## CLI 交互流程
 
 ```
-$ npx ben-harness
+$ npx auriga-cli
 
 ? 选择要安装的模块类型：（多选）
   ◉ Workflow — 通用 Workflow + Harness 原则 + Subagent 原则
@@ -144,14 +144,14 @@ $ npx ben-harness
 ## 技术栈
 
 - **语言**：TypeScript
-- **运行方式**：`npx ben-harness`（免安装）
+- **运行方式**：`npx auriga-cli`（免安装）
 - **交互库**：@inquirer/prompts（checkbox, select, confirm, input）
 - **子进程调用**：Node.js child_process.execSync（调用 npx skills、claude plugins 等）
 - **文件操作**：Node.js fs 模块
 
 ## 验收标准
 
-1. `npx ben-harness` 可以正常运行，展示交互式菜单
+1. `npx auriga-cli` 可以正常运行，展示交互式菜单
 2. Workflow 模块可以 copy CLAUDE.md 到指定目录，并创建 AGENTS.md 软链接
 3. Skills 模块可以 merge skills-lock.json 并执行 `npx skills experimental_install`
 4. Plugins 模块可以安装 marketplace（如需要）并执行 `claude plugins install`

@@ -1,6 +1,6 @@
 [English](README.md) | 中文
 
-# ben-harness
+# auriga-cli
 
 模块化的 Claude Code harness —— 按需选装你需要的部分。
 
@@ -17,7 +17,7 @@
 ## 快速开始
 
 ```bash
-npx ben-harness
+npx auriga-cli
 ```
 
 交互式菜单，按需选择安装：

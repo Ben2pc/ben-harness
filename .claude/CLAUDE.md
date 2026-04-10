@@ -1,10 +1,10 @@
-# ben-harness Development Guide
+# auriga-cli Development Guide
 
-> The root `CLAUDE.md` is the **product** (installed to user projects). This file guides development of ben-harness itself.
+> The root `CLAUDE.md` is the **product** (installed to user projects). This file guides development of auriga-cli itself.
 
 ## What This Is
 
-Interactive CLI (`npx ben-harness`) that modularly installs Claude Code harness components: Workflow, Skills, Recommended Skills, Plugins.
+Interactive CLI (`npx auriga-cli`) that modularly installs Claude Code harness components: Workflow, Skills, Recommended Skills, Plugins.
 
 ## Architecture
 
