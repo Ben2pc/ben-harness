@@ -43,7 +43,7 @@ DEV=1 npm start  # use local files instead of fetching from GitHub
 |------|--------------|---------|
 | `skills-lock.json` | `npx skills` CLI | Skill registry (do NOT edit structure manually) |
 | `.claude/plugins.json` | Manual | Plugin definitions |
-| `CLAUDE.md` / `CLAUDE.zh-CN.md` | Manual | Workflow templates (the product) |
+| `CLAUDE.md` / `CLAUDE.zh-CN.md` | Manual | Workflow templates (the product). **Must be edited in tandem** — both languages must stay in sync |
 
 ## Versioning & Release
 
@@ -52,6 +52,6 @@ DEV=1 npm start  # use local files instead of fetching from GitHub
 
 ## Principles
 
-- This is a ~500-line tool. Keep it simple — no abstractions for one-time operations.
+- Keep it simple — no abstractions for one-time operations.
 - Main menu order = execution order: Workflow -> Skills -> Recommended Skills -> Plugins.
 - ESM throughout (`"type": "module"`, `.js` extensions in imports).

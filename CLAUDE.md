@@ -1,4 +1,4 @@
-# General Workflow (v0.1.0)
+# General Workflow (v1.0.0)
 
 1. Requirement Clarification: Use `brainstorming` to clarify requirements for new features. **Requirements should focus on "what to do" and acceptance criteria, not specific technical paths.** For product features, prioritize "Why" and let the implementation-stage Agent decide how.
 
@@ -12,6 +12,29 @@
 
 6. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, **test cases and acceptance criteria should be designed by an independent subagent** (not the coding Agent), receiving **only the requirement description and code file paths, without current implementation context**, to avoid bias. Evaluation subagents should use the strongest available model at highest reasoning effort.
 
+7. Post-coding: Before any "done / fixed / ready to commit" judgment, run and check full verification per `verification-before-completion`. For UI changes, use `playwright-cli` for interaction verification (operate the app like a user), not just code review.
+
+8. Post-requirement: After development branch work, **ensure** all related tests have been run and passed, confirm the base branch, and submit a Pull Request. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
+
+9. Post-PR: Remind your human partner to use `/review` for review, which **must** be executed by independent agents (subagents or Independent Agents — see Agent Dispatch Principles), referencing project specification docs. Before dispatching, **first analyze the PR diff to classify change types** (multiple tags may apply): `logic` (code logic changes), `ui` (CLI/TUI/UI changes), `frontend-perf` (frontend/mobile changes), `structure` (new files, module reorganization). Then dispatch by the following tiered dimensions:
+
+   **Always required** (every review must dispatch these):
+   - **Correctness**: Does it implement requirements correctly? Any logic errors?
+   - **Consistency**: Does it follow existing project patterns and conventions?
+   - **Documentation Sync**: Do changes cause README, CLAUDE.md, etc. to be inconsistent with reality? Remove outdated or redundant descriptions — no documentation is better than wrong documentation. Code is documentation — don't add redundant descriptions of code behavior.
+
+   **Conditional — dispatch by change type tag**:
+   - `logic` → **Security**: Does it introduce injection, XSS, or other vulnerabilities?
+   - `logic` → **Edge Cases**: Exception inputs, concurrency, resource cleanup
+   - `ui` → **UX** (dedicated subagent): Review all interaction flows from user perspective — dead ends, no feedback after actions, misclick risks, redundant operations, invisible state
+   - `frontend-perf` → **Performance**: Rendering (unnecessary re-renders, unvirtualized large lists, animation jank), bundle size (un-tree-shaken deps, uncompressed large assets), network (redundant requests, no caching, waterfall loading), memory (leaks, unreleased listeners/timers). Mobile: additionally check startup time, offscreen rendering, main thread blocking
+   - `structure` → **Engineering Structure**: Are new files in the right directories, following existing layering/packaging conventions? Any circular dependencies or cross-layer direct calls? Have impact scopes of shared module changes been assessed? Any reimplementation of existing reusable modules?
+
+   **General** (for non-trivial changes):
+   - **Maintainability**: Naming, structure, over-abstraction or under-abstraction
+
+10. About Review: When review finds architectural decay (for reuse, quality, efficiency, clarity, consistency, maintainability), small issues can be fixed in the current PR without affecting test results. For high-risk changes, remind your human partner to create an issue for tracking.
+
 ## Quick Development Flow (bug fix / small refactor / small feature)
 
 No brainstorming or planning needed, but TDD is not skippable. Steps:
@@ -23,23 +46,6 @@ No brainstorming or planning needed, but TDD is not skippable. Steps:
 
 The only exception to skip TDD: pure documentation, pure configuration, or pure prompt changes (no code logic changes).
 
-7. Post-coding: Before any "done / fixed / ready to commit" judgment, run and check full verification per `verification-before-completion`. For UI changes, use `playwright-cli` for interaction verification (operate the app like a user), not just code review.
-
-8. Post-requirement: After development branch work, **ensure** all related tests have been run and passed, confirm the base branch, and submit a Pull Request. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
-
-9. Post-PR: Remind your human partner to use `/review` for review, which **must** be executed by subagents — dispatch multiple subagents for different dimensions, referencing project specification docs during review. Review subagents use the following structured scoring dimensions (weighted by model blind spots):
-   1. **Correctness**: Does it implement requirements correctly? Any logic errors?
-   2. **Security** (high weight): Does it introduce injection, XSS, or other vulnerabilities?
-   3. **Consistency** (high weight): Does it follow existing project patterns and conventions?
-   4. **Edge Cases** (high weight): Exception inputs, concurrency, resource cleanup
-   5. **Maintainability**: Naming, structure, over-abstraction or under-abstraction
-   6. **UX** (required for CLI/TUI/UI): Review all interaction flows from user perspective — dead ends, no feedback after actions, misclick risks, redundant operations, invisible state. Dispatch a dedicated subagent for UX review
-   7. **Performance** (high weight for frontend/mobile): Rendering (unnecessary re-renders, unvirtualized large lists, animation jank), bundle size (un-tree-shaken deps, uncompressed large assets), network (redundant requests, no caching, waterfall loading), memory (leaks, unreleased listeners/timers). Mobile: additionally check startup time, offscreen rendering, main thread blocking
-   8. **Documentation Sync**: Code is documentation — avoid redundant descriptions of code behavior. Only check: do changes cause README, CLAUDE.md, etc. to be inconsistent with reality? Remove outdated or redundant descriptions — no documentation is better than wrong documentation
-   9. **Engineering Structure**: Are new files in the right directories, following existing layering/packaging conventions? Any circular dependencies or cross-layer direct calls? Have impact scopes of shared module changes been assessed? Any reimplementation of existing reusable modules?
-
-10. About Review: When review finds architectural decay (for reuse, quality, efficiency, clarity, consistency, maintainability), small issues can be fixed in the current PR without affecting test results. For high-risk changes, remind your human partner to create an issue for tracking.
-
 # Harness Principles
 
 - **Enforce constraints via mechanisms, not prompts**: Core architectural rules should be enforced via linters / CI / type systems, not by relying on Agents to self-police.
@@ -49,26 +55,27 @@ The only exception to skip TDD: pure documentation, pure configuration, or pure 
 - **Components are detachable**: Each workflow step encodes an assumption that "the model isn't good at this." Periodically reassess as model capabilities improve, changing one variable at a time.
 - **Instruction files are directories, not encyclopedias**: Keep CLAUDE.md / AGENTS.md lean (~100 lines), serving as entry points and navigation. Detailed specs go in `docs/` topic files. Subsystems can have their own local instruction files. When everything is important, nothing is — information overload causes Agents to pattern-match locally rather than understand globally. Always create an AGENTS.md symlink to CLAUDE.md (`ln -s CLAUDE.md AGENTS.md`) to ensure different Agent frameworks read the same instructions.
 
-# Subagent Usage Principles
+# Agent Dispatch Principles
 
-In-conversation subagents (Agent tool) share the main Agent's working directory — be mindful of read/write isolation:
+Choose the right level of delegation:
 
-- **Read in parallel, isolate writes**: Multiple subagents can read in parallel (review, search, analyze), but parallel code writing **must** use `isolation: "worktree"`, otherwise later writes silently overwrite earlier ones.
-- **Single writer needs no isolation**: When only one subagent writes code, no worktree is needed — write directly.
-- **Use appropriate models**: When the approach is clear, assign medium/small-granularity coding tasks to sonnet / gpt-5.4-mini / gpt-5.3-codex-spark — no need for opus/gpt-5.4. Saves tokens, runs faster.
-- **Review -> Fix strategy**: For few/simple changes, the main Agent fixes directly — no subagent needed. For multiple complex fixes requiring parallel subagents, proactively start reviews with `isolation: "worktree"` when you anticipate large fixes, so the review agent can fix directly without rebuilding context. For uncertain fix scope, review without isolation first, then dispatch isolated subagents if needed.
-- **Split tasks by file/module**: Parallel worktree subagents fork from the same commit. Changes to different files auto-merge; changes to the same file create conflicts. Task boundaries by file are better than by function.
-- **Don't manually `git worktree`**: `isolation: "worktree"` doesn't just create a worktree — it switches the agent's entire tool path context and handles merging and cleanup automatically. Manual worktrees cause Read/Edit tool paths to be inconsistent with Bash.
+| Scenario | Approach |
+|----------|----------|
+| Single file fix, clear solution | Do it yourself — no subagent overhead |
+| Parallel read tasks (review, search, analysis) | In-conversation subagents, no isolation needed |
+| Single subagent writes code | In-conversation subagent, no isolation needed |
+| Multiple subagents write code | In-conversation subagents + `isolation: "worktree"`, split by file |
+| Need fresh perspective with zero context pollution | Independent Agent (e.g., test design per step 6) |
+| Cross-model blind spot coverage | Independent Agent (e.g., GPT reviews Claude's code) |
+| Unsure which approach fits | `AskUserQuestion` — present options with your recommendation |
 
-# Independent Agent Usage Guide
+In-conversation subagents share the main Agent's working directory. Key rules:
 
-Independent Agents (e.g., Codex plugin's rescue subagent) provide process-level isolation (independent context, independent model instance) — more thorough than in-conversation subagents.
-
-**Good use cases**:
-- **Independent evaluation/test design**: Acceptance criteria design per step 6, requiring complete isolation from current implementation context
-- **Cross-model review**: Different models reviewing each other's code (e.g., GPT reviewing Claude's code) — different models have different blind spots, catching issues same-model review misses
-- **Long parallel tasks**: One writing code, one writing docs/tests, non-blocking
-
-**Poor use cases**:
-- Simple code search, small changes — in-conversation subagents suffice, process overhead not worthwhile
-- Tasks requiring frequent back-and-forth — inter-process communication cost is high
+- **Isolate parallel writes**: Parallel code writing **must** use `isolation: "worktree"`. Single writer needs no isolation.
+  - ✅ 3 subagents review different dimensions in parallel (read-only) — no isolation
+  - ✅ 2 subagents fix `cli.ts` and `utils.ts` respectively with worktree — different files, auto-merge
+  - ❌ 2 subagents both edit `utils.ts` with worktree — same file, will conflict. Assign to one subagent
+- **Match model and effort to task**: Flexibly choose model (sonnet/opus, gpt-5.4/gpt-5.4-mini) and effort level based on task complexity.
+  - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet
+  - ✅ "Design the plugin dependency resolution strategy" → opus
+  - ✅ Complex review with many architectural trade-offs → GPT 5.4 with high effort for cross-model blind spot coverage
