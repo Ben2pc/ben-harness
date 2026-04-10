@@ -31,23 +31,6 @@ export interface PluginsConfig {
   plugins: PluginDef[];
 }
 
-// --- Skill categories ---
-
-export const WORKFLOW_SKILLS = [
-  "brainstorming",
-  "planning-with-files",
-  "playwright-cli",
-  "systematic-debugging",
-  "test-driven-development",
-  "ui-ux-pro-max",
-  "verification-before-completion",
-];
-
-export const RECOMMENDED_DESCRIPTIONS: Record<string, string> = {
-  "claude-code-agent": "Delegate tasks to another Claude Code CLI instance",
-  "codex-agent": "Delegate tasks to Codex CLI",
-};
-
 // --- Package root ---
 
 export function getPackageRoot(): string {
@@ -100,7 +83,7 @@ async function fetchFile(file: string): Promise<string> {
 }
 
 export async function fetchContentRoot(): Promise<string> {
-  if (process.env.DEV) {
+  if (process.env.DEV === "1") {
     return getPackageRoot();
   }
 

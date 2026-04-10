@@ -1,14 +1,23 @@
 import fs from "node:fs";
 import path from "node:path";
 import { checkbox, select } from "@inquirer/prompts";
-import {
-  exec,
-  log,
-  withEsc,
-  WORKFLOW_SKILLS,
-  RECOMMENDED_DESCRIPTIONS,
-} from "./utils.js";
+import { exec, log, withEsc } from "./utils.js";
 import type { SkillsLock } from "./utils.js";
+
+const WORKFLOW_SKILLS = [
+  "brainstorming",
+  "planning-with-files",
+  "playwright-cli",
+  "systematic-debugging",
+  "test-driven-development",
+  "ui-ux-pro-max",
+  "verification-before-completion",
+];
+
+const RECOMMENDED_DESCRIPTIONS: Record<string, string> = {
+  "claude-code-agent": "Delegate tasks to another Claude Code CLI instance",
+  "codex-agent": "Delegate tasks to Codex CLI",
+};
 
 function loadLock(packageRoot: string): SkillsLock {
   return JSON.parse(

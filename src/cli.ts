@@ -9,13 +9,13 @@ import { installPlugins } from "./plugins.js";
 async function main(): Promise<void> {
   console.log("\nben-harness — Claude Code Harness Installer\n");
 
-  if (process.env.DEV) {
+  if (process.env.DEV === "1") {
     console.log("Using local content (DEV mode)\n");
   } else {
     console.log("Fetching latest content from GitHub...");
   }
   const packageRoot = await fetchContentRoot();
-  if (!process.env.DEV) console.log("");
+  if (process.env.DEV !== "1") console.log("");
 
   const moduleTypes = await withEsc(checkbox({
     message: "Select module types to install:",

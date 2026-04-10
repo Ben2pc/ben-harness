@@ -23,7 +23,7 @@ src/
 
 ## Key Conventions
 
-- **Skill categorization**: `WORKFLOW_SKILLS` in `utils.ts` lists standard workflow skills. Everything else in `skills-lock.json` is "recommended". Adding a recommended skill: `npx skills add <repo> --skill <name>` + add description to `RECOMMENDED_DESCRIPTIONS`.
+- **Skill categorization**: `WORKFLOW_SKILLS` in `skills.ts` lists standard workflow skills. Everything else in `skills-lock.json` is "recommended". Adding a recommended skill: `npx skills add <repo> --skill <name>` + add description to `RECOMMENDED_DESCRIPTIONS` in `skills.ts`.
 - **Plugin config**: `.claude/plugins.json` defines available plugins. Marketplace sources auto-install.
 - **Subprocess calls**: Use `exec()` wrapper, `{ inherit: true }` for streaming output.
 - **User-facing output**: Use `log.ok/warn/error/skip` for consistent colored output.
