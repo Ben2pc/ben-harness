@@ -83,6 +83,10 @@ async function fetchFile(file: string): Promise<string> {
 }
 
 export async function fetchContentRoot(): Promise<string> {
+  if (process.env.DEV === "1") {
+    return getPackageRoot();
+  }
+
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ben-harness-"));
 
   for (const file of CONTENT_FILES) {
