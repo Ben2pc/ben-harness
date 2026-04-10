@@ -1,6 +1,6 @@
 {
   "name": "ben-harness",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Interactive CLI to install Claude Code harness modules (Workflow, Skills, Plugins)",
   "type": "module",
   "bin": {

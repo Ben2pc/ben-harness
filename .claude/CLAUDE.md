@@ -45,6 +45,11 @@ DEV=1 npm start  # use local files instead of fetching from GitHub
 | `.claude/plugins.json` | Manual | Plugin definitions |
 | `CLAUDE.md` / `CLAUDE.zh-CN.md` | Manual | Workflow templates (the product) |
 
+## Versioning & Release
+
+- Version in `package.json` follows semver: patch for bugfixes, minor for new features, major for breaking changes.
+- Bump version before merging feature PRs. Publish: `npm publish`.
+
 ## Principles
 
 - This is a ~500-line tool. Keep it simple — no abstractions for one-time operations.
