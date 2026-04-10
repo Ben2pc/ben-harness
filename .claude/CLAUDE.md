@@ -34,6 +34,7 @@ src/
 npm run build    # tsc
 npm run dev      # tsc --watch
 npm start        # node dist/cli.js
+DEV=1 npm start  # use local files instead of fetching from GitHub
 ```
 
 ## Data Sources
