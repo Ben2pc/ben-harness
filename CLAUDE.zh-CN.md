@@ -14,9 +14,9 @@
 
 7. TDD：非微小代码改动遵循 `test-driven-development`：先写失败测试，再写最小实现，再回归验证。**每个 task 开始前明确可测试的验收标准**（具体功能点 + 验收条件 + 边界场景），不是最后才检查。对于复杂功能，**测试用例和验收标准应由独立 subagent 设计**（不是写代码的 Agent 自己写），该 subagent **只接收需求描述和代码文件路径，不携带当前实现过程的上下文**，避免被实现思路污染判断。评估 subagent 应使用当前可用的最强模型和最高推理力度。
 
-8. 完成编码后：任何"已完成 / 已修复 / 可以提交 / 可以发起正式评审"的判断前，都先按 `verification-before-completion` 运行并检查完整验证。对涉及 UI 的改动，使用 `playwright-cli` 进行交互验证（像用户一样操作应用），不只是看代码。
+8. 完成编码后：任何"已完成 / 已修复 / 可以提交 / 可以进入评审"的判断前，都先按 `verification-before-completion` 运行并检查完整验证。对涉及 UI 的改动，使用 `playwright-cli` 进行交互验证（像用户一样操作应用），不只是看代码。
 
-9. 完成需求后：在将 PR 标记为 Ready for Review 前，**确保**相关测试都已执行并通过，确认基准分支，并在 PR 描述中补全变更范围、验收标准、风险和剩余 TODO。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
+9. PR就绪：在验证完成、基准分支确认无误，并且 PR 描述已补全变更范围、验收标准、风险和剩余 TODO 之前，保持 PR 为 Draft。完成这些条件后，将 PR 标记为 Ready for Review。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
 
 10. PR评审：Draft PR 阶段可以先获取早期反馈，但正式 review 必须在 PR 标记为 Ready for Review 之后，通过 `/review` 发起，且**必须**由独立 agent 执行（对话内 subagent 或独立 Agent——参见 Agent 分发原则），review 时需要参考项目里的规范文档。派遣前，须**先分析 PR diff 对变更进行分类打标**（可多选）：`logic`（代码逻辑变更）、`ui`（CLI/TUI/UI 变更）、`frontend-perf`（前端/移动端变更）、`structure`（新增文件、模块重组）。然后按以下分层维度派遣：
 
