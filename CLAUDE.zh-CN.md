@@ -18,7 +18,7 @@
 
 9. 完成需求后：在将 PR 标记为 Ready for Review 前，**确保**相关测试都已执行并通过，确认基准分支，并在 PR 描述中补全变更范围、验收标准、风险和剩余 TODO。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
 
-10. 提交PR后：Draft PR 阶段可以先获取早期反馈，但正式 review 必须在 PR 标记为 Ready for Review 之后，通过 `/review` 发起，且**必须**由独立 agent 执行（对话内 subagent 或独立 Agent——参见 Agent 分发原则），review 时需要参考项目里的规范文档。派遣前，须**先分析 PR diff 对变更进行分类打标**（可多选）：`logic`（代码逻辑变更）、`ui`（CLI/TUI/UI 变更）、`frontend-perf`（前端/移动端变更）、`structure`（新增文件、模块重组）。然后按以下分层维度派遣：
+10. PR评审：Draft PR 阶段可以先获取早期反馈，但正式 review 必须在 PR 标记为 Ready for Review 之后，通过 `/review` 发起，且**必须**由独立 agent 执行（对话内 subagent 或独立 Agent——参见 Agent 分发原则），review 时需要参考项目里的规范文档。派遣前，须**先分析 PR diff 对变更进行分类打标**（可多选）：`logic`（代码逻辑变更）、`ui`（CLI/TUI/UI 变更）、`frontend-perf`（前端/移动端变更）、`structure`（新增文件、模块重组）。然后按以下分层维度派遣：
 
    **必选**（每次 review 都必须派出）：
    - **正确性**：功能是否按需求实现，有无逻辑错误
