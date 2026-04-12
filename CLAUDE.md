@@ -12,13 +12,13 @@
 
 6. Pre-coding 4: When encountering bugs, test failures, or unexpected behavior, follow `systematic-debugging` to find root cause before fixing.
 
-7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, **test cases and acceptance criteria should be designed by an independent subagent** (not the coding Agent), receiving **only the requirement description and code file paths, without current implementation context**, to avoid bias. Evaluation subagents should use the strongest available model at highest reasoning effort.
+7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, follow **Independent Evaluation** for test design: use an independent subagent that receives only the requirement description and code file paths, without implementation context, and use the strongest available model at highest reasoning effort.
 
 8. Post-coding: Before any "done / fixed / ready to commit / ready for review" judgment, run and check full verification per `verification-before-completion`. For UI changes, use `playwright-cli` for interaction verification (operate the app like a user), not just code review.
 
 9. PR Readiness: Keep the PR in Draft until verification is complete, the base branch is confirmed, and the PR description is updated with scope, acceptance criteria, risks, and remaining TODOs. Then mark the PR Ready for Review. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
 
-10. PR Review: Early feedback may happen on a Draft PR, but formal review must use `/review` and **must** be executed by independent agents (subagents or Independent Agents — see Agent Dispatch Principles), referencing project specification docs, after the PR is marked Ready for Review. Before dispatching, **first analyze the PR diff to classify change types** (multiple tags may apply): `logic` (code logic changes), `ui` (CLI/TUI/UI changes), `frontend-perf` (frontend/mobile changes), `structure` (new files, module reorganization). Then dispatch by the following tiered dimensions:
+10. PR Review: Early feedback may happen on a Draft PR. After the PR is Ready for Review, formal review must use `/review`, follow **Independent Evaluation**, and reference project specification docs. Use **Agent Dispatch Principles** for execution details. Before dispatching, **first analyze the PR diff to classify change types** (multiple tags may apply): `logic` (code logic changes), `ui` (CLI/TUI/UI changes), `frontend-perf` (frontend/mobile changes), `structure` (new files, module reorganization). Then dispatch by the following tiered dimensions:
 
    **Always required** (every review must dispatch these):
    - **Correctness**: Does it implement requirements correctly? Any logic errors?
@@ -39,7 +39,7 @@
 
 ## Quick Development Flow (bug fix / small refactor / small feature)
 
-No brainstorming or planning needed, but TDD is not skippable. Steps:
+Skip brainstorming and planning only; branch, Draft PR, TDD, verification, and review rules still apply. Steps:
 
 1. **Run baseline**: Run existing tests for affected modules to confirm current state (all green or pre-existing failures)
 2. **Write/update tests** (red): Use `test-driven-development` to describe expected behavior. When changes touch shared modules, ensure all consumers' tests are in the baseline
@@ -52,7 +52,7 @@ The only exception to skip TDD: pure documentation, pure configuration, or pure 
 
 - **Enforce constraints via mechanisms, not prompts**: Core architectural rules should be enforced via linters / CI / type systems, not by relying on Agents to self-police.
 - **The repo is the single source of truth**: What Agents can't access doesn't exist. External docs must be brought into the repo to count.
-- **Separate generation and evaluation**: Don't let an Agent evaluate its own work. Review must be done by independent Agents.
+- **Independent Evaluation**: Test design for complex features and formal review must be done by independent agents; do not let an Agent evaluate its own work.
 - **Continuously fight entropy**: Pay down tech debt incrementally — don't let it accumulate into painful cleanups.
 - **Components are detachable**: Each workflow step encodes an assumption that "the model isn't good at this." Periodically reassess as model capabilities improve, changing one variable at a time.
 - **Instruction files are directories, not encyclopedias**: Keep CLAUDE.md / AGENTS.md lean (~100 lines), serving as entry points and navigation. Detailed specs go in `docs/` topic files. Subsystems can have their own local instruction files. When everything is important, nothing is — information overload causes Agents to pattern-match locally rather than understand globally. Always create an AGENTS.md symlink to CLAUDE.md (`ln -s CLAUDE.md AGENTS.md`) to ensure different Agent frameworks read the same instructions.
