@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Generate the auriga-cli brand icon (Celestial Compass).
 
-Single self-contained generator. The font ships alongside this script under
-OFL. To regenerate:
+Dev-only generator. The font sits next to this script under SIL OFL; the
+output PNG is written into the shipped hook directory at
+.claude/hooks/notify/icon.png. To regenerate:
 
-    python3 .claude/hooks/generate-auriga-icon.py
+    python3 tools/notify-icon/generate-icon.py
 
-See auriga-icon.design.md for the design philosophy.
+See icon.design.md for the design philosophy.
 """
 import math
 from pathlib import Path
@@ -14,8 +15,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent
+REPO_ROOT = ROOT.parent.parent
 FONT = ROOT / "JetBrainsMono-Bold.ttf"
-OUT = ROOT / "auriga-icon.png"
+OUT = REPO_ROOT / ".claude" / "hooks" / "notify" / "icon.png"
 
 RENDER = 1024
 FINAL = 512
