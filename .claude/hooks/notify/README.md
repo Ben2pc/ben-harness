@@ -24,15 +24,13 @@ Edit `config.json` next to this README:
   absolute path. Replace `icon.png` with any 512×512 PNG to brand it
   yourself; the file is never overwritten by re-running the installer.
 - **`sender`** *(optional, advanced)* — bundle ID of a macOS app whose
-  notification permission and small title icon `terminal-notifier`
-  should piggy-back on (e.g. `"com.apple.Terminal"`,
-  `"com.googlecode.iterm2"`, `"com.mitchellh.ghostty"`). Default is
-  unset, which routes through `terminal-notifier`'s own bundle — the
-  most reliable path because brew authorized it at install time. Only
-  set this if you specifically want a different small icon next to the
-  title; the prominent brand image always comes from `icon.png`. Setting
-  this to a bundle whose notification permission, banner style, or
-  Focus settings are misconfigured will silently swallow notifications.
+  notification permission the notification should piggy-back on (e.g.
+  `"com.apple.Terminal"`, `"com.googlecode.iterm2"`). Default is unset,
+  which uses the notification backend's own bundle — the most reliable
+  path because brew authorizes it at install time. Setting this to a
+  bundle whose notification permission, banner style, or Focus settings
+  are misconfigured will silently swallow notifications, so leave it
+  alone unless you have a specific reason.
 - **`activate`** *(optional)* — bundle ID of the app to bring to the
   foreground when you click the banner. **By default the hook
   auto-detects** the terminal Claude Code is running in via the
@@ -70,11 +68,26 @@ notification permission for your terminal app being set to "None" in
 
 ## How it works
 
-`index.mjs` reads the `Notification` event payload from stdin, looks up
-`terminal-notifier` (auto-installed by the auriga-cli installer via
-Homebrew), and shows a banner. If `terminal-notifier` is missing it falls
-back to `osascript`, which still produces a banner + sound but cannot
-show the brand icon.
+`index.mjs` reads the `Notification` event payload from stdin and picks
+the first available notification backend, in this order:
+
+1. **`alerter`** *(preferred)* — Swift-based successor to
+   terminal-notifier with `--app-icon` for the small top-left icon next
+   to the title. The auriga-cli installer auto-installs it via
+   `brew install vjeantet/tap/alerter`. alerter blocks until the user
+   clicks or `--timeout` fires, so the hook spawns it through a
+   detached background worker and exits immediately — Claude Code is
+   never blocked. The worker watches alerter's stdout for
+   `@CONTENTCLICKED` and, on click, runs `osascript` to bring the
+   resolved `activate` bundle to the foreground.
+2. **`terminal-notifier`** *(fallback)* — used when alerter isn't
+   installed (e.g. on machines that haven't run auriga-cli ≥ 1.2.0).
+   Cannot customize the small icon, but the OS handles click
+   activation natively via `-activate <bundle-id>`, so no worker is
+   needed.
+3. **`osascript`** *(final fallback)* — `display notification` via
+   AppleScript. Always present on macOS. No custom icon, no click
+   activation.
 
 ## Re-installing
 

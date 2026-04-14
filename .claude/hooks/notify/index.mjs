@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
@@ -7,6 +7,7 @@ import fs from "node:fs";
 if (process.platform !== "darwin") process.exit(0);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const SELF = fileURLToPath(import.meta.url);
 
 const DEFAULTS = { icon: "./icon.png", sound: "Submarine", sender: null, activate: undefined };
 
@@ -43,13 +44,13 @@ function loadConfig() {
   }
 }
 
-// terminal-notifier's `-activate` brings the named app to the foreground
-// when the user clicks the banner. Auto-detect from $__CFBundleIdentifier:
-// macOS Launch Services injects this env var into every descendant of an
-// app it launched, so a hook spawned from Claude Code → spawned from
-// Terminal/iTerm/Ghostty/Warp/... receives the *exact* bundle ID of the
-// terminal, with no mapping table to maintain. Wrong/missing → click is a
-// no-op (banner + sound still work), so this is safe to enable by default.
+// macOS Launch Services injects $__CFBundleIdentifier into every
+// descendant of an app it launched, so a hook spawned from Claude Code
+// → spawned from the user's terminal receives the *exact* bundle ID of
+// the terminal — no mapping table to maintain. Wrong/missing → click is
+// a no-op (banner + sound still fire), so this is safe to enable by
+// default. Users on weird launch chains (ssh, launchd, cron) can pin
+// `activate` in config.json or set it to `false` to opt out.
 function resolveActivate(cfg) {
   if (cfg.activate === false) return null;
   if (typeof cfg.activate === "string" && cfg.activate.length > 0) return cfg.activate;
@@ -60,6 +61,39 @@ function resolveIcon(iconPath) {
   if (!iconPath) return null;
   const abs = path.isAbsolute(iconPath) ? iconPath : path.join(HERE, iconPath);
   return fs.existsSync(abs) ? abs : null;
+}
+
+// Detached worker mode (re-invocation of this script). Reads a JSON job
+// blob from argv, runs alerter to completion (synchronously, since
+// alerter blocks until click or --timeout), and on click activates the
+// resolved bundle via osascript. The main hook process spawns this
+// worker `detached: true, stdio: "ignore"` and exits immediately so
+// Claude Code is never blocked waiting on a notification banner.
+//
+// alerter contract (verified against v26.5):
+//   - blocks until user interacts OR --timeout fires
+//   - prints "@CONTENTCLICKED" to stdout when the banner content is clicked
+//   - prints "@TIMEOUT" / "@CLOSED" / "@ACTIONCLICKED" for other outcomes
+// We only react to @CONTENTCLICKED; everything else is a no-op exit.
+if (process.argv[2] === "--alerter-worker") {
+  try {
+    const job = JSON.parse(process.argv[3]);
+    const result = spawnSync(job.bin, job.args, { encoding: "utf8" });
+    if (
+      result.status === 0 &&
+      typeof result.stdout === "string" &&
+      result.stdout.includes("@CONTENTCLICKED") &&
+      job.activate
+    ) {
+      spawnSync("osascript", [
+        "-e",
+        `tell application id "${job.activate}" to activate`,
+      ]);
+    }
+  } catch {
+    // worker failures are silent — never bubble up to Claude Code
+  }
+  process.exit(0);
 }
 
 let input = "";
@@ -74,6 +108,46 @@ process.stdin.on("end", () => {
     const title = String(data.title || "Claude Code");
     const message = String(data.message || "");
     const subtitle = data.notification_type ? String(data.notification_type) : "";
+    const activate = resolveActivate(cfg);
+
+    // Backend preference: alerter > terminal-notifier > osascript.
+    //
+    // alerter wins because its --app-icon flag lets us replace the
+    // small top-left app icon with the Auriga brand mark — the only
+    // backend that can do that. Cost: alerter blocks until click or
+    // --timeout, so we have to dispatch it through a detached worker
+    // and read its stdout for the click signal.
+    //
+    // terminal-notifier is the fallback for users who haven't run the
+    // installer since 1.2.0 (or whose alerter install failed). It
+    // can't customize the small icon, but `-activate` lets the OS
+    // handle click activation natively, so we don't need a worker.
+    //
+    // osascript is the final fallback. No icon, no `-activate`, but
+    // it's always present on macOS.
+    const al = spawnSync("which", ["alerter"], { encoding: "utf8" });
+    if (al.status === 0 && al.stdout.trim()) {
+      const args = [
+        "--title", title,
+        "--message", message,
+        "--sound", cfg.sound,
+        "--timeout", "30",
+      ];
+      if (subtitle) args.push("--subtitle", subtitle);
+      if (iconAbs) {
+        args.push("--app-icon", iconAbs);
+        args.push("--content-image", iconAbs);
+      }
+      if (cfg.sender) args.push("--sender", cfg.sender);
+
+      const job = JSON.stringify({ bin: "alerter", args, activate });
+      const child = spawn(process.execPath, [SELF, "--alerter-worker", job], {
+        detached: true,
+        stdio: "ignore",
+      });
+      child.unref();
+      return;
+    }
 
     const tn = spawnSync("which", ["terminal-notifier"], { encoding: "utf8" });
     if (tn.status === 0 && tn.stdout.trim()) {
@@ -83,7 +157,6 @@ process.stdin.on("end", () => {
         "-sound", cfg.sound,
       ];
       if (cfg.sender) args.push("-sender", cfg.sender);
-      const activate = resolveActivate(cfg);
       if (activate) args.push("-activate", activate);
       if (subtitle) args.push("-subtitle", subtitle);
       if (iconAbs) args.push("-contentImage", iconAbs);

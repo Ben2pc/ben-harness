@@ -9,7 +9,7 @@
       "files": ["index.mjs", "config.json", "icon.png", "README.md", "test.mjs"],
       "preserveFiles": ["config.json", "icon.png"],
       "deps": [
-        { "name": "terminal-notifier", "via": "brew", "optional": true }
+        { "name": "vjeantet/tap/alerter", "via": "brew", "optional": true }
       ],
       "marker": "auriga:notify",
       "customizeHints": [
