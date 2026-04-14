@@ -10,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify.mjs\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/notify/index.mjs\""
           }
         ]
       }

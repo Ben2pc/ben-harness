@@ -6,6 +6,7 @@ import { fetchContentRoot, printBanner, withEsc } from "./utils.js";
 import { installWorkflow } from "./workflow.js";
 import { installSkills, installRecommendedSkills } from "./skills.js";
 import { installPlugins } from "./plugins.js";
+import { installHooks } from "./hooks.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
@@ -45,6 +46,11 @@ async function main(): Promise<void> {
         value: "plugins" as const,
         checked: true,
       },
+      {
+        name: "Hooks — Claude Code hooks (notifications, etc.)",
+        value: "hooks" as const,
+        checked: true,
+      },
     ],
   }));
 
@@ -71,6 +77,11 @@ async function main(): Promise<void> {
   if (moduleTypes.includes("plugins")) {
     console.log("\n--- Plugins ---\n");
     await installPlugins(packageRoot);
+  }
+
+  if (moduleTypes.includes("hooks")) {
+    console.log("\n--- Hooks ---\n");
+    await installHooks(packageRoot);
   }
 
   console.log("\n\u2728 Installation complete!\n");

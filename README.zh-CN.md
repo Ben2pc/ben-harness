@@ -12,7 +12,9 @@
 |---|---|
 | **Workflow** | `CLAUDE.md` 开发工作流：需求澄清 → TDD → Review，Harness 原则，Subagent 使用指南 |
 | **Skills** | 开发流程 skills —— brainstorming、systematic-debugging、TDD、verification、planning、playwright |
+| **Recommended Skills** | 可选的工具类 skills（如 `ui-ux-pro-max`），在 workflow skills 之外按需追加 |
 | **Plugins** | 推荐的 Claude Code 插件 —— skill-creator、claude-md-management、codex |
+| **Hooks** | Claude Code hooks（当前包含 `notify` —— 带品牌图标和提示音的原生 macOS 通知） |
 
 ## 快速开始
 
@@ -26,10 +28,12 @@ npx auriga-cli
 ? 选择要安装的模块类型：
   ◉ Workflow — CLAUDE.md + AGENTS.md
   ◉ Skills — 开发流程 skills
+  ◉ Recommended Skills — 额外的工具 skills
   ◉ Plugins — Claude Code 插件
+  ◉ Hooks — Claude Code hooks
 ```
 
-每个模块支持作用域选择（Skills: project/global，Plugins: user/project）。
+每个模块支持作用域选择（Skills: project/global，Plugins: user/project，Hooks: project local / project / user）。
 
 ## 模块详情
 
@@ -66,10 +70,27 @@ npx auriga-cli
 | claude-md-management | 审计和改进 CLAUDE.md |
 | codex | Codex 跨模型协作 |
 
+### Hooks
+
+把 Claude Code hooks 安装到选定的作用域。每个 hook 都是 `.claude/hooks/<name>/` 下一个自包含目录，可以**不改代码**自定义。
+
+| Hook | 说明 |
+|---|---|
+| notify | 当 Claude 需要你关注时弹一条原生 macOS 通知。会自动通过 Homebrew 安装 `terminal-notifier`。改 `.claude/hooks/notify/config.json` 即可换提示音、替换 `.claude/hooks/notify/icon.png` 即可换图标。仅 macOS 运行时生效，其它平台静默 no-op。 |
+
+作用域选择：
+
+- **Project local**（推荐给跨平台团队）：文件落在 `./.claude/hooks/`，注册到 `./.claude/settings.local.json` —— 每个开发者各自安装，不进 git。
+- **Project**：同样的文件，注册到 `./.claude/settings.json` —— 整个团队共享。
+- **User**：文件落在 `~/.claude/hooks/`，注册到 `~/.claude/settings.json` —— 全局生效。
+
+重新跑安装器时会保留你修改过的 `config.json` 和 `icon.png`，覆盖运行时本身，并通过 marker 字段幂等去重，绝不会产生重复的 hook 条目。
+
 ## 环境要求
 
 - Node.js >= 18
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)（Plugins 模块需要）
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)（Plugins 和 Hooks 模块需要）
+- [Homebrew](https://brew.sh)（`notify` hook 用来安装 `terminal-notifier`，可选）
 
 ## License
 

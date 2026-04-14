@@ -73,6 +73,7 @@ const CONTENT_FILES = [
   "CLAUDE.md",
   "skills-lock.json",
   ".claude/plugins.json",
+  ".claude/hooks/hooks.json",
 ];
 
 async function fetchFile(file: string): Promise<string> {
@@ -80,6 +81,13 @@ async function fetchFile(file: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.text();
+}
+
+async function fetchFileBinary(file: string): Promise<Buffer> {
+  const url = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${file}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
 }
 
 export async function fetchContentRoot(): Promise<string> {
@@ -107,6 +115,16 @@ export async function fetchExtraContent(
   const dest = path.join(tmpDir, file);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, content);
+}
+
+export async function fetchExtraContentBinary(
+  tmpDir: string,
+  file: string,
+): Promise<void> {
+  const buf = await fetchFileBinary(file);
+  const dest = path.join(tmpDir, file);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, buf);
 }
 
 // --- ESC support ---
