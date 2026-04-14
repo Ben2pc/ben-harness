@@ -210,7 +210,7 @@ function mergeHookIntoSettings(
   return { ok: true, mutated };
 }
 
-function loadHooksConfig(packageRoot: string): HooksConfig {
+export function loadHooksConfig(packageRoot: string): HooksConfig {
   const configPath = path.join(packageRoot, ".claude", "hooks", "hooks.json");
   return JSON.parse(fs.readFileSync(configPath, "utf-8")) as HooksConfig;
 }
@@ -218,6 +218,57 @@ function loadHooksConfig(packageRoot: string): HooksConfig {
 function relativeFromCwd(absPath: string): string {
   const rel = path.relative(process.cwd(), absPath);
   return rel.startsWith("..") ? absPath : rel;
+}
+
+export interface InstallHookResult {
+  hook: string;
+  written: number;
+  preserved: number;
+  scope: Scope;
+  hookDir: string;
+  settingsPath: string;
+  settingsMutated: boolean;
+  settingsError?: string;
+  aborted?: string;
+}
+
+/**
+ * Non-interactive single-hook install. Driven by installHooks (which
+ * collects user choices via prompts) and by tools/verify-hooks.mjs (which
+ * exercises the install path end-to-end without prompts).
+ */
+export async function installHook(
+  hook: HookDef,
+  scope: Scope,
+  projectBase: string,
+  packageRoot: string,
+): Promise<InstallHookResult> {
+  const resolved = resolveScope(scope, projectBase, hook.name);
+  const base: InstallHookResult = {
+    hook: hook.name,
+    written: 0,
+    preserved: 0,
+    scope,
+    hookDir: resolved.hookDir,
+    settingsPath: resolved.settingsPath,
+    settingsMutated: false,
+  };
+
+  if (!preflightDeps(hook)) {
+    return { ...base, aborted: "deps preflight failed" };
+  }
+
+  await ensureHookFilesFetched(hook, packageRoot);
+  const { written, preserved } = copyHookFiles(hook, packageRoot, resolved.hookDir);
+
+  const merge = mergeHookIntoSettings(resolved, hook);
+  return {
+    ...base,
+    written,
+    preserved,
+    settingsMutated: merge.mutated,
+    settingsError: merge.ok ? undefined : merge.reason,
+  };
 }
 
 export async function installHooks(packageRoot: string): Promise<void> {
@@ -274,35 +325,31 @@ export async function installHooks(packageRoot: string): Promise<void> {
         default: "project-local",
       }),
     );
-    const resolved = resolveScope(scope, projectBaseResolved, hook.name);
 
-    if (!preflightDeps(hook)) {
-      log.error(`${hook.name} aborted`);
-      continue;
-    }
-
+    let result: InstallHookResult;
     try {
-      await ensureHookFilesFetched(hook, packageRoot);
+      result = await installHook(hook, scope, projectBaseResolved, packageRoot);
     } catch (e) {
-      log.error(`${hook.name}: failed to fetch payload: ${(e as Error).message}`);
+      log.error(`${hook.name}: ${(e as Error).message}`);
       continue;
     }
 
-    const { written, preserved } = copyHookFiles(hook, packageRoot, resolved.hookDir);
-    const merge = mergeHookIntoSettings(resolved, hook);
-    if (!merge.ok) {
-      log.error(`${hook.name}: ${merge.reason}`);
-      log.warn(`Files were copied to ${relativeFromCwd(resolved.hookDir)} but settings not updated. Add the hook entry manually if you want it active.`);
+    if (result.aborted) {
+      log.error(`${hook.name} aborted: ${result.aborted}`);
       continue;
     }
 
-    const settingsRel = relativeFromCwd(resolved.settingsPath);
-    const dirRel = relativeFromCwd(resolved.hookDir);
-    const summary = preserved > 0
-      ? `${hook.name} hook installed at ${dirRel} (${written} written, ${preserved} preserved)`
+    const settingsRel = relativeFromCwd(result.settingsPath);
+    const dirRel = relativeFromCwd(result.hookDir);
+    const summary = result.preserved > 0
+      ? `${hook.name} hook installed at ${dirRel} (${result.written} written, ${result.preserved} preserved)`
       : `${hook.name} hook installed at ${dirRel}`;
     log.ok(summary);
-    if (merge.mutated) {
+
+    if (result.settingsError) {
+      log.error(`${hook.name}: ${result.settingsError}`);
+      log.warn(`Files were copied to ${dirRel} but settings not updated. Add the hook entry manually if you want it active.`);
+    } else if (result.settingsMutated) {
       log.ok(`registered in ${settingsRel}`);
     } else {
       log.skip(`already registered in ${settingsRel}`);
