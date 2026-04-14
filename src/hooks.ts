@@ -67,6 +67,20 @@ export interface SettingsFile {
 
 const HOOK_NAME_RE = /^[a-z][a-z0-9-]*$/;
 const DEP_NAME_RE = /^[a-z0-9][a-z0-9._+-]*$/;
+const EVENT_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+// Whitelist for hook command templates. The registry is fetched from raw
+// GitHub at runtime, and the command string is written verbatim into
+// settings.json then executed by Claude Code on every hook fire — so an
+// unconstrained string here is direct registry-RCE. We require:
+//   <runtime> "$HOOK_DIR/<flat-basename>.<ext>"
+// where runtime ∈ {node, python3, bash}, the path literal starts with
+// $HOOK_DIR/, the basename is a flat alphanumeric identifier (no slashes,
+// no dots — so no nested paths and no `..` traversal), the extension is
+// alphanumeric, and there are no trailing arguments. Anything else is
+// rejected at load time. Adding a runtime, allowing args, or relaxing
+// the form requires a code change here, intentionally — see the security
+// review trail in PR #7 for context.
+const COMMAND_RE = /^(node|python3|bash) "\$HOOK_DIR\/[A-Za-z0-9_-]+\.[A-Za-z0-9]+"$/;
 
 function isSafeRelativePath(file: unknown): boolean {
   if (typeof file !== "string" || file.length === 0) return false;
@@ -132,8 +146,27 @@ function validateHookEntry(hook: unknown, idx: number): void {
   if (!Array.isArray(h.settingsEvents)) {
     throw new Error(`hooks.json: hooks[${idx}].settingsEvents must be an array`);
   }
-  if (typeof h.command !== "string" || h.command.length === 0) {
-    throw new Error(`hooks.json: hooks[${idx}].command must be a non-empty string`);
+  for (const evt of h.settingsEvents) {
+    if (!evt || typeof evt !== "object") {
+      throw new Error(`hooks.json: hooks[${idx}].settingsEvents entry is not an object`);
+    }
+    const en = (evt as Record<string, unknown>).event;
+    if (typeof en !== "string" || !EVENT_NAME_RE.test(en)) {
+      throw new Error(
+        `hooks.json: hooks[${idx}].settingsEvents.event must match ${EVENT_NAME_RE} (got ${JSON.stringify(en)})`,
+      );
+    }
+    const matcher = (evt as Record<string, unknown>).matcher;
+    if (matcher !== undefined && (typeof matcher !== "string" || !EVENT_NAME_RE.test(matcher))) {
+      throw new Error(
+        `hooks.json: hooks[${idx}].settingsEvents.matcher must match ${EVENT_NAME_RE} (got ${JSON.stringify(matcher)})`,
+      );
+    }
+  }
+  if (typeof h.command !== "string" || !COMMAND_RE.test(h.command)) {
+    throw new Error(
+      `hooks.json: hooks[${idx}].command must match the safe template ${COMMAND_RE} (got ${JSON.stringify(h.command)})`,
+    );
   }
   if (typeof h.marker !== "string" || h.marker.length === 0) {
     throw new Error(`hooks.json: hooks[${idx}].marker must be a non-empty string`);
@@ -419,12 +452,38 @@ function copyHookFiles(
   return { written, preserved };
 }
 
+/**
+ * Snapshot a settings file to `.bak` before the first mutation in this
+ * session. The naive `copyFileSync(src, dst)` follows symlinks, which
+ * would let a local attacker pre-symlink `settings.json.bak` at, say,
+ * `~/.ssh/authorized_keys` and have us clobber the target on the next
+ * install — same threat class as the tmp-file TOCTOU that
+ * `atomicWriteFile` plugs. We use the same defense: read the source,
+ * write to a fresh fd opened with O_CREAT|O_EXCL|O_WRONLY (refuses any
+ * pre-existing path, including a symlink), then rely on the no-op-if-
+ * already-backed-up-this-session guard for re-runs.
+ *
+ * If the .bak already exists from a previous session, leave it alone —
+ * the FIRST backup is the one that captures the user's pre-auriga state,
+ * which is what they care about restoring to.
+ */
 function backupOnce(filePath: string): void {
   if (settingsBackedUp.has(filePath)) return;
-  if (fs.existsSync(filePath)) {
-    fs.copyFileSync(filePath, filePath + ".bak");
-  }
   settingsBackedUp.add(filePath);
+  if (!fs.existsSync(filePath)) return;
+  const bakPath = filePath + ".bak";
+  if (fs.existsSync(bakPath)) return;
+  const data = fs.readFileSync(filePath);
+  const fd = fs.openSync(
+    bakPath,
+    fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY,
+    0o600,
+  );
+  try {
+    fs.writeSync(fd, data);
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 /**
