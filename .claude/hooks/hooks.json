@@ -1,0 +1,17 @@
+{
+  "hooks": [
+    {
+      "name": "notify",
+      "description": "Native macOS notification when Claude needs your attention (auto-installs terminal-notifier via Homebrew)",
+      "runtimePlatforms": ["darwin"],
+      "settingsEvents": [{ "event": "Notification" }],
+      "command": "node \"$HOOK_DIR/index.mjs\"",
+      "files": ["index.mjs", "config.json", "icon.png", "README.md"],
+      "preserveFiles": ["config.json", "icon.png"],
+      "deps": [
+        { "name": "terminal-notifier", "via": "brew", "optional": true }
+      ],
+      "marker": "auriga:notify"
+    }
+  ]
+}
