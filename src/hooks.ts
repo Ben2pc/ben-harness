@@ -73,7 +73,12 @@ export interface SettingsFile {
 // once at load time, then trust it through the rest of the install flow.
 
 const HOOK_NAME_RE = /^[a-z][a-z0-9-]*$/;
-const DEP_NAME_RE = /^[a-z0-9][a-z0-9._+-]*$/;
+// Matches a flat brew formula name (`terminal-notifier`) OR a fully
+// qualified tap-prefixed name (`vjeantet/tap/alerter`) — up to 2
+// slashes separating segments. Each segment is the same charset as
+// the flat-name form. No shell metachars; safe to pass to `brew install`
+// as a single argv item.
+const DEP_NAME_RE = /^[a-z0-9][a-z0-9._+-]*(\/[a-z0-9][a-z0-9._+-]*){0,2}$/;
 const EVENT_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 // Whitelist for hook command templates. The registry is fetched from raw
 // GitHub at runtime, and the command string is written verbatim into
@@ -353,9 +358,20 @@ function scopeChoices(): { name: string; value: Scope }[] {
   ];
 }
 
+// brew package names can be tap-prefixed (`vjeantet/tap/alerter`) but
+// the binary the formula installs into PATH is the bare formula name
+// (`alerter`). Strip the tap prefix to get the binary to `which` for.
+// Hook authors with a brew package whose binary name doesn't match the
+// formula name will need to ship a wrapper `bin` field in the future;
+// no such hook exists today.
+function depBinary(dep: HookDep): string {
+  const segments = dep.name.split("/");
+  return segments[segments.length - 1];
+}
+
 function depReady(dep: HookDep): boolean {
   try {
-    exec(`which ${dep.name}`);
+    exec(`which ${depBinary(dep)}`);
     return true;
   } catch {
     return false;

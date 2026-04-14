@@ -497,11 +497,24 @@ describe("installHook (integration)", () => {
 
 describe("findStaleScopes / cleanHookFromScope", () => {
   let notify: HookDef;
+  let originalHome: string | undefined;
   before(() => {
     const config = loadHooksConfig(REPO_ROOT);
     const found = config.hooks.find((h) => h.name === "notify");
     if (!found) throw new Error("notify hook missing from registry");
     notify = found;
+    // findStaleScopes scans all 3 scopes incl. user, which on a real
+    // dev machine reads ~/.claude/settings.json. If the developer has
+    // a real notify hook installed (very likely while dogfooding!),
+    // the test would see 2 stale scopes instead of 1. Pin HOME to a
+    // throwaway scratch dir so the user-scope branch lands on an
+    // empty path and only the deliberately-seeded scopes count.
+    originalHome = process.env.HOME;
+    process.env.HOME = makeScratch("cross-home");
+  });
+  after(() => {
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
   });
 
   test("detects + removes a project-local entry when installing into project scope", async () => {
