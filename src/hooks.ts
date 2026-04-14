@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { checkbox, input, select } from "@inquirer/prompts";
+import { checkbox, confirm, input, select } from "@inquirer/prompts";
 import {
   exec,
   fetchExtraContentBinary,
@@ -141,12 +141,20 @@ function validateHookEntry(hook: unknown, idx: number): void {
 }
 
 /**
- * Pure, idempotent settings merge. Deep-clones input, dedupes by sentinel
- * `_marker` (NOT command-string equality) so re-running across path drift
- * never produces duplicate hook entries. The marker is the only identifier
- * the future uninstall command will use, so it must round-trip through
- * Claude Code's settings reader unchanged (Claude Code ignores unknown
- * fields on hook actions, which is how we get away with it).
+ * Pure, idempotent settings merge. Deep-clones input, dedupes by two
+ * checks in priority order:
+ *
+ *   1. sentinel `_marker` field — primary key. Survives path drift, lets
+ *      a future uninstall command find our entries unambiguously.
+ *   2. command-string equality — secondary, catches the case where the
+ *      user (or another tool) already added an equivalent entry by hand
+ *      and never wrote our marker. Without this fallback we would happily
+ *      append a duplicate next to it and the hook would fire twice.
+ *
+ * Throws if `settings.hooks[event]` exists but is not an array — that
+ * means the user has hand-edited their settings into a shape we do not
+ * recognize, and silently replacing it with an empty array would lose
+ * data. Callers should catch and surface the error to the user.
  */
 export function addHookToSettings(
   settings: SettingsFile,
@@ -155,15 +163,34 @@ export function addHookToSettings(
   marker: string,
 ): { settings: SettingsFile; mutated: boolean } {
   const next: SettingsFile = JSON.parse(JSON.stringify(settings ?? {}));
-  if (!next.hooks || typeof next.hooks !== "object") next.hooks = {};
-  const list: SettingsHookGroup[] = Array.isArray(next.hooks[event])
-    ? (next.hooks[event] as SettingsHookGroup[])
-    : [];
+  if (next.hooks !== undefined && (typeof next.hooks !== "object" || Array.isArray(next.hooks))) {
+    throw new Error(
+      `settings.hooks exists but is not an object; refusing to clobber it`,
+    );
+  }
+  if (!next.hooks) next.hooks = {};
+
+  const existing = next.hooks[event];
+  if (existing !== undefined && !Array.isArray(existing)) {
+    throw new Error(
+      `settings.hooks.${event} exists but is not an array; refusing to clobber it`,
+    );
+  }
+  const list: SettingsHookGroup[] = (existing as SettingsHookGroup[] | undefined) ?? [];
 
   for (const group of list) {
     if (!group?.hooks || !Array.isArray(group.hooks)) continue;
     for (const action of group.hooks) {
-      if (action && action._marker === marker) {
+      if (!action) continue;
+      if (action._marker === marker) {
+        next.hooks[event] = list;
+        return { settings: next, mutated: false };
+      }
+      if (action.type === "command" && action.command === command) {
+        // A pre-existing entry (manual or from another tool) already
+        // points at the same command. Coexist with it; do not add a
+        // duplicate. We deliberately do NOT stamp our marker onto someone
+        // else's entry — that would silently take ownership of it.
         next.hooks[event] = list;
         return { settings: next, mutated: false };
       }
@@ -175,6 +202,52 @@ export function addHookToSettings(
   });
   next.hooks[event] = list;
   return { settings: next, mutated: true };
+}
+
+/**
+ * Pure inverse of addHookToSettings: removes every action carrying
+ * `_marker` from every event in the settings tree. Returns the mutated
+ * copy and the count of actions removed. If a group becomes empty after
+ * removal, the whole group is dropped; if an event becomes empty, the
+ * event key is dropped.
+ */
+export function removeHookFromSettings(
+  settings: SettingsFile,
+  marker: string,
+): { settings: SettingsFile; removed: number } {
+  const next: SettingsFile = JSON.parse(JSON.stringify(settings ?? {}));
+  if (!next.hooks || typeof next.hooks !== "object" || Array.isArray(next.hooks)) {
+    return { settings: next, removed: 0 };
+  }
+
+  let removed = 0;
+  for (const event of Object.keys(next.hooks)) {
+    const list = next.hooks[event];
+    if (!Array.isArray(list)) continue;
+    const newGroups: SettingsHookGroup[] = [];
+    for (const group of list) {
+      if (!group?.hooks || !Array.isArray(group.hooks)) {
+        newGroups.push(group);
+        continue;
+      }
+      const remainingActions = group.hooks.filter((action) => {
+        if (action && action._marker === marker) {
+          removed++;
+          return false;
+        }
+        return true;
+      });
+      if (remainingActions.length > 0) {
+        newGroups.push({ ...group, hooks: remainingActions });
+      }
+    }
+    if (newGroups.length > 0) {
+      next.hooks[event] = newGroups;
+    } else {
+      delete next.hooks[event];
+    }
+  }
+  return { settings: next, removed };
 }
 
 type Scope = "project-local" | "project" | "user";
@@ -339,25 +412,35 @@ function backupOnce(filePath: string): void {
   settingsBackedUp.add(filePath);
 }
 
-function mergeHookIntoSettings(
+/**
+ * Read and JSON.parse a settings file. Returns {} for missing file.
+ * Throws on parse error so the caller can abort cleanly *before* any
+ * file copy, instead of leaving orphan hook files in the target after a
+ * mid-flight failure.
+ */
+function readSettings(settingsPath: string): SettingsFile {
+  if (!fs.existsSync(settingsPath)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(settingsPath, "utf8")) as SettingsFile;
+  } catch (e) {
+    throw new Error(
+      `${settingsPath} is not valid JSON: ${(e as Error).message}`,
+    );
+  }
+}
+
+/**
+ * Apply a hook's settingsEvents to an already-parsed settings object,
+ * write the result atomically if anything changed. The caller MUST have
+ * pre-validated the file via readSettings() before any file copy.
+ */
+function writeMergedSettings(
   resolved: ScopeResolved,
   hook: HookDef,
-): { ok: boolean; mutated: boolean; reason?: string } {
-  let settings: SettingsFile = {};
-  if (fs.existsSync(resolved.settingsPath)) {
-    try {
-      settings = JSON.parse(fs.readFileSync(resolved.settingsPath, "utf8")) as SettingsFile;
-    } catch (e) {
-      return {
-        ok: false,
-        mutated: false,
-        reason: `${resolved.settingsPath} is not valid JSON: ${(e as Error).message}`,
-      };
-    }
-  }
-
+  parsed: SettingsFile,
+): { mutated: boolean } {
   let mutated = false;
-  let next = settings;
+  let next = parsed;
   for (const evt of hook.settingsEvents) {
     const cmd = hook.command.replace(/\$HOOK_DIR/g, resolved.commandHookDir);
     const result = addHookToSettings(next, evt.event, cmd, hook.marker);
@@ -370,7 +453,7 @@ function mergeHookIntoSettings(
     fs.mkdirSync(path.dirname(resolved.settingsPath), { recursive: true });
     atomicWriteFile(resolved.settingsPath, JSON.stringify(next, null, 2) + "\n");
   }
-  return { ok: true, mutated };
+  return { mutated };
 }
 
 /**
@@ -433,6 +516,12 @@ export interface InstallHookResult {
  * Non-interactive single-hook install. Driven by installHooks (which
  * collects user choices via prompts) and by tools/verify-hooks.mjs (which
  * exercises the install path end-to-end without prompts).
+ *
+ * Failure ordering matters: deps run first (no state changes), then
+ * settings is read AND parsed (still no state changes), and only after
+ * parsing succeeds do we touch the filesystem to copy hook files. A
+ * malformed settings file therefore aborts cleanly and leaves nothing
+ * behind.
  */
 export async function installHook(
   hook: HookDef,
@@ -455,17 +544,103 @@ export async function installHook(
     return { ...base, aborted: "deps preflight failed" };
   }
 
+  // Pre-validate settings BEFORE any filesystem writes. If the file is
+  // malformed we abort here, before copyHookFiles, so the caller never
+  // ends up with orphan hook files in the target.
+  let parsedSettings: SettingsFile;
+  try {
+    parsedSettings = readSettings(resolved.settingsPath);
+  } catch (e) {
+    return { ...base, aborted: (e as Error).message };
+  }
+
   await ensureHookFilesFetched(hook, packageRoot);
   const { written, preserved } = copyHookFiles(hook, packageRoot, resolved.hookDir);
 
-  const merge = mergeHookIntoSettings(resolved, hook);
+  let mutated = false;
+  let settingsError: string | undefined;
+  try {
+    mutated = writeMergedSettings(resolved, hook, parsedSettings).mutated;
+  } catch (e) {
+    settingsError = (e as Error).message;
+  }
+
   return {
     ...base,
     written,
     preserved,
-    settingsMutated: merge.mutated,
-    settingsError: merge.ok ? undefined : merge.reason,
+    settingsMutated: mutated,
+    settingsError,
   };
+}
+
+/**
+ * Scan all 3 scope settings files for a hook's marker, returning every
+ * scope where the marker is currently present and is NOT the scope the
+ * caller is about to install into. Used by installHooks to detect
+ * cross-scope leftovers from a previous install — which would cause the
+ * hook to fire multiple times if not cleaned up.
+ *
+ * Pure-ish: reads files but does not mutate. Silently skips files that
+ * fail to parse — surfacing those errors is the install path's job.
+ */
+export interface StaleScope {
+  scope: Scope;
+  settingsPath: string;
+  count: number;
+}
+
+export function findStaleScopes(
+  hook: HookDef,
+  currentScope: Scope,
+  projectBase: string,
+): StaleScope[] {
+  const all: Scope[] = ["project-local", "project", "user"];
+  const stale: StaleScope[] = [];
+  for (const s of all) {
+    if (s === currentScope) continue;
+    const r = resolveScope(s, projectBase, hook.name);
+    if (!fs.existsSync(r.settingsPath)) continue;
+    let parsed: SettingsFile;
+    try {
+      parsed = JSON.parse(fs.readFileSync(r.settingsPath, "utf8")) as SettingsFile;
+    } catch {
+      continue;
+    }
+    const removed = removeHookFromSettings(parsed, hook.marker).removed;
+    if (removed > 0) {
+      stale.push({ scope: s, settingsPath: r.settingsPath, count: removed });
+    }
+  }
+  return stale;
+}
+
+/**
+ * Remove every action carrying `hook.marker` from the given scope's
+ * settings file. Atomic write, snapshot-once .bak. Returns the count of
+ * actions removed (0 if nothing matched or file did not exist).
+ */
+export function cleanHookFromScope(
+  hook: HookDef,
+  scope: Scope,
+  projectBase: string,
+): { removed: number; settingsPath: string } {
+  const r = resolveScope(scope, projectBase, hook.name);
+  if (!fs.existsSync(r.settingsPath)) {
+    return { removed: 0, settingsPath: r.settingsPath };
+  }
+  let parsed: SettingsFile;
+  try {
+    parsed = JSON.parse(fs.readFileSync(r.settingsPath, "utf8")) as SettingsFile;
+  } catch {
+    return { removed: 0, settingsPath: r.settingsPath };
+  }
+  const result = removeHookFromSettings(parsed, hook.marker);
+  if (result.removed > 0) {
+    backupOnce(r.settingsPath);
+    atomicWriteFile(r.settingsPath, JSON.stringify(result.settings, null, 2) + "\n");
+  }
+  return { removed: result.removed, settingsPath: r.settingsPath };
 }
 
 export async function installHooks(packageRoot: string): Promise<void> {
@@ -515,6 +690,11 @@ export async function installHooks(packageRoot: string): Promise<void> {
   for (const hook of selected) {
     console.log(`\n· ${hook.name}`);
 
+    // Per-hook scope is intentional (not a single upfront prompt like
+    // plugins.ts / skills.ts): a future user may want personal dev tools
+    // at user level and project-specific hooks at project level. The
+    // single-hook case is functionally identical to a single prompt, so
+    // there is no UX regression here.
     const scope = await withEsc(
       select<Scope>({
         message: `Where to install the ${hook.name} hook?`,
@@ -522,6 +702,26 @@ export async function installHooks(packageRoot: string): Promise<void> {
         default: "project-local",
       }),
     );
+
+    // Cross-scope cleanup: if this hook's marker is already present in a
+    // *different* scope's settings file, leaving it there means the hook
+    // will fire from both scopes. Detect, prompt, clean before installing.
+    const stale = findStaleScopes(hook, scope, projectBaseResolved);
+    for (const entry of stale) {
+      log.warn(
+        `Found existing ${hook.name} hook in ${relativeFromCwd(entry.settingsPath)} (${entry.scope} scope, ${entry.count} entr${entry.count === 1 ? "y" : "ies"})`,
+      );
+      const remove = await withEsc(
+        confirm({
+          message: `Remove the stale registration so the hook only fires once?`,
+          default: true,
+        }),
+      );
+      if (remove) {
+        const cleaned = cleanHookFromScope(hook, entry.scope, projectBaseResolved);
+        log.ok(`removed ${cleaned.removed} from ${relativeFromCwd(cleaned.settingsPath)}`);
+      }
+    }
 
     let result: InstallHookResult;
     try {
