@@ -8,8 +8,18 @@ if (process.platform !== "darwin") process.exit(0);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULTS = { icon: "./icon.png", sound: "Submarine" };
+const DEFAULTS = { icon: "./icon.png", sound: "Submarine", sender: null };
 
+// terminal-notifier's `-sender` re-routes the notification through a
+// specific app's bundle ID — for both the small icon next to the title
+// AND the notification permission NotificationCenter consults. Pinning
+// it to any concrete bundle is fragile: if that app isn't installed,
+// has never been launched, has notification permission off, or has
+// banner style set to "None", terminal-notifier silently exits 0 and
+// nothing appears. Default to NOT passing `-sender` so the notification
+// rides on terminal-notifier's own bundle, which the Homebrew install
+// authorizes at first launch and which always works. Users who want a
+// specific app icon next to the title can set `sender` in config.json.
 function loadConfig() {
   try {
     const raw = fs.readFileSync(path.join(HERE, "config.json"), "utf8");
@@ -17,6 +27,10 @@ function loadConfig() {
     return {
       icon: typeof parsed.icon === "string" ? parsed.icon : DEFAULTS.icon,
       sound: typeof parsed.sound === "string" ? parsed.sound : DEFAULTS.sound,
+      sender:
+        typeof parsed.sender === "string" && parsed.sender.length > 0
+          ? parsed.sender
+          : DEFAULTS.sender,
     };
   } catch {
     return { ...DEFAULTS };
@@ -48,8 +62,8 @@ process.stdin.on("end", () => {
         "-title", title,
         "-message", message,
         "-sound", cfg.sound,
-        "-sender", "com.apple.Terminal",
       ];
+      if (cfg.sender) args.push("-sender", cfg.sender);
       if (subtitle) args.push("-subtitle", subtitle);
       if (iconAbs) args.push("-contentImage", iconAbs);
       spawnSync("terminal-notifier", args, { stdio: "ignore" });

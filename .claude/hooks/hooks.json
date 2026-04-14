@@ -6,7 +6,7 @@
       "runtimePlatforms": ["darwin"],
       "settingsEvents": [{ "event": "Notification" }],
       "command": "node \"$HOOK_DIR/index.mjs\"",
-      "files": ["index.mjs", "config.json", "icon.png", "README.md"],
+      "files": ["index.mjs", "config.json", "icon.png", "README.md", "test.mjs"],
       "preserveFiles": ["config.json", "icon.png"],
       "deps": [
         { "name": "terminal-notifier", "via": "brew", "optional": true }
@@ -15,6 +15,7 @@
       "customizeHints": [
         "Sound → edit {hookDir}/config.json  (e.g. \"sound\": \"Submarine\")",
         "Icon  → replace {hookDir}/icon.png with your own 512×512 PNG",
+        "Test  → node {hookDir}/test.mjs   (fire a fake Notification end-to-end)",
         "Docs  → {hookDir}/README.md"
       ]
     }
