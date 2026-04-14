@@ -73,7 +73,7 @@ export interface SettingsFile {
 // once at load time, then trust it through the rest of the install flow.
 
 const HOOK_NAME_RE = /^[a-z][a-z0-9-]*$/;
-// Matches a flat brew formula name (`terminal-notifier`) OR a fully
+// Matches a flat brew formula name (`jq`, `pngquant`) OR a fully
 // qualified tap-prefixed name (`vjeantet/tap/alerter`) — up to 2
 // slashes separating segments. Each segment is the same charset as
 // the flat-name form. No shell metachars; safe to pass to `brew install`
@@ -364,7 +364,7 @@ function scopeChoices(): { name: string; value: Scope }[] {
 // Hook authors with a brew package whose binary name doesn't match the
 // formula name will need to ship a wrapper `bin` field in the future;
 // no such hook exists today.
-function depBinary(dep: HookDep): string {
+export function depBinary(dep: HookDep): string {
   const segments = dep.name.split("/");
   return segments[segments.length - 1];
 }

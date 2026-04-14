@@ -76,7 +76,7 @@ Installs Claude Code hooks into a chosen scope. Each hook is self-contained unde
 
 | Hook | Description |
 |---|---|
-| notify | Native macOS notification when Claude needs your attention. Auto-installs `terminal-notifier` via Homebrew. Customize sound and icon by editing `.claude/hooks/notify/config.json` and replacing `.claude/hooks/notify/icon.png`. macOS-only at runtime; silent no-op on other platforms. |
+| notify | Native macOS notification when Claude needs your attention. Shows the brand mark in the small app-icon position, with click-to-activate that brings the originating terminal back to the foreground. Auto-installs `alerter` via Homebrew (`vjeantet/tap/alerter`). Customize sound and icon by editing `.claude/hooks/notify/config.json` and replacing `.claude/hooks/notify/icon.png`. macOS-only at runtime; silent no-op on other platforms. |
 
 Scope choices:
 
@@ -90,7 +90,7 @@ Re-running the installer preserves your customized `config.json` and `icon.png`,
 
 - Node.js >= 18
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (required for Plugins and Hooks modules)
-- [Homebrew](https://brew.sh) (recommended for the `notify` hook to install `terminal-notifier`)
+- [Homebrew](https://brew.sh) (recommended for the `notify` hook to install `alerter`)
 
 ## License
 

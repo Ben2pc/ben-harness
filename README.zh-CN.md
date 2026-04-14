@@ -76,7 +76,7 @@ npx auriga-cli
 
 | Hook | 说明 |
 |---|---|
-| notify | 当 Claude 需要你关注时弹一条原生 macOS 通知。会自动通过 Homebrew 安装 `terminal-notifier`。改 `.claude/hooks/notify/config.json` 即可换提示音、替换 `.claude/hooks/notify/icon.png` 即可换图标。仅 macOS 运行时生效，其它平台静默 no-op。 |
+| notify | 当 Claude 需要你关注时弹一条原生 macOS 通知。在通知小图标位显示品牌图，点击通知可把发起 Claude 的终端拉回前台。会自动通过 Homebrew 安装 `alerter`（`vjeantet/tap/alerter`）。改 `.claude/hooks/notify/config.json` 即可换提示音、替换 `.claude/hooks/notify/icon.png` 即可换图标。仅 macOS 运行时生效，其它平台静默 no-op。 |
 
 作用域选择：
 
@@ -90,7 +90,7 @@ npx auriga-cli
 
 - Node.js >= 18
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)（Plugins 和 Hooks 模块需要）
-- [Homebrew](https://brew.sh)（`notify` hook 用来安装 `terminal-notifier`，可选）
+- [Homebrew](https://brew.sh)（`notify` hook 用来安装 `alerter`，可选）
 
 ## License
 

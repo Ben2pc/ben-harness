@@ -11,16 +11,17 @@ const SELF = fileURLToPath(import.meta.url);
 
 const DEFAULTS = { icon: "./icon.png", sound: "Submarine", sender: null, activate: undefined };
 
-// terminal-notifier's `-sender` re-routes the notification through a
-// specific app's bundle ID — for both the small icon next to the title
-// AND the notification permission NotificationCenter consults. Pinning
-// it to any concrete bundle is fragile: if that app isn't installed,
-// has never been launched, has notification permission off, or has
-// banner style set to "None", terminal-notifier silently exits 0 and
-// nothing appears. Default to NOT passing `-sender` so the notification
-// rides on terminal-notifier's own bundle, which the Homebrew install
-// authorizes at first launch and which always works. Users who want a
-// specific app icon next to the title can set `sender` in config.json.
+// alerter's `--sender` re-routes the notification through a specific
+// app's bundle ID, which determines what notification permission and
+// banner-style settings NotificationCenter applies. Pinning it to any
+// concrete bundle is fragile: if that app isn't installed, has never
+// been launched, has notification permission off, or has banner style
+// set to "None", alerter silently exits 0 and nothing appears. Default
+// to NOT passing `--sender` so the notification rides on alerter's own
+// bundle, which Homebrew authorizes at install time. Users who want a
+// specific app's icon at the small position can set `sender` in
+// config.json — but `--app-icon` already lets you override that icon
+// without the routing fragility, so most users won't need this.
 function loadConfig() {
   try {
     const raw = fs.readFileSync(path.join(HERE, "config.json"), "utf8");
