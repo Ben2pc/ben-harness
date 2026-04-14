@@ -27,6 +27,7 @@ npx auriga-cli
 ? 选择要安装的模块类型：
   ◉ Workflow — CLAUDE.md + AGENTS.md
   ◉ Skills — 开发流程 skills
+  ◉ Recommended Skills — 额外的工具 skills
   ◉ Plugins — Claude Code 插件
   ◉ Hooks — Claude Code hooks
 ```

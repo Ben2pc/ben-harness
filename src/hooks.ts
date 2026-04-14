@@ -371,6 +371,21 @@ function preflightDeps(hook: HookDef): boolean {
   return true;
 }
 
+/**
+ * Lazy-fetch a hook's payload files into `packageRoot` so they can be
+ * copied from there into the user's target directory.
+ *
+ * IMPORTANT: in production, `packageRoot` is the temp dir created by
+ * `fetchContentRoot()` (utils.ts) — not the npm package install dir.
+ * Only `.claude/hooks/hooks.json` is preloaded by `CONTENT_FILES`; we
+ * fetch each hook's individual files on demand here so users who pick
+ * no hooks pay no network cost. In DEV mode `packageRoot` is the live
+ * repo root, so the files are already on disk and we skip the fetch.
+ *
+ * The hook payload list is owned by `hook.files` in `hooks.json`, which
+ * loadHooksConfig already validated for path-traversal safety, so each
+ * `file` here is a known-good relative path.
+ */
 async function ensureHookFilesFetched(hook: HookDef, packageRoot: string): Promise<void> {
   if (process.env.DEV === "1") return;
   for (const file of hook.files) {
@@ -656,21 +671,6 @@ export async function installHooks(packageRoot: string): Promise<void> {
     return;
   }
 
-  const projectBase = await withEsc(
-    input({
-      message: "Hooks install target directory (used for project-scoped hooks):",
-      default: process.cwd(),
-    }),
-  );
-  const projectBaseResolved = path.resolve(projectBase);
-  if (
-    !fs.existsSync(projectBaseResolved) ||
-    !fs.statSync(projectBaseResolved).isDirectory()
-  ) {
-    log.error(`Not a valid directory: ${projectBaseResolved}`);
-    return;
-  }
-
   const selected = await withEsc(
     checkbox<HookDef>({
       message: "Select hooks to install:",
@@ -687,14 +687,33 @@ export async function installHooks(packageRoot: string): Promise<void> {
     return;
   }
 
+  // Lazily prompted on the first project-scoped hook, then reused. Users
+  // who pick only "user" scope are never asked about a project directory.
+  let projectBaseResolved: string | null = null;
+  async function ensureProjectBase(): Promise<string | null> {
+    if (projectBaseResolved !== null) return projectBaseResolved;
+    const projectBase = await withEsc(
+      input({
+        message: "Hooks install target directory:",
+        default: process.cwd(),
+      }),
+    );
+    const resolvedPath = path.resolve(projectBase);
+    if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isDirectory()) {
+      log.error(`Not a valid directory: ${resolvedPath}`);
+      return null;
+    }
+    projectBaseResolved = resolvedPath;
+    return projectBaseResolved;
+  }
+
   for (const hook of selected) {
     console.log(`\n· ${hook.name}`);
 
     // Per-hook scope is intentional (not a single upfront prompt like
     // plugins.ts / skills.ts): a future user may want personal dev tools
     // at user level and project-specific hooks at project level. The
-    // single-hook case is functionally identical to a single prompt, so
-    // there is no UX regression here.
+    // single-hook case is functionally identical to a single prompt.
     const scope = await withEsc(
       select<Scope>({
         message: `Where to install the ${hook.name} hook?`,
@@ -703,10 +722,27 @@ export async function installHooks(packageRoot: string): Promise<void> {
       }),
     );
 
+    // User scope mutates ~/.claude/settings.json — global, affects every
+    // project on this machine. The select label says so but a passive
+    // label is easy to miss; one explicit warning before any mutation.
+    if (scope === "user") {
+      log.warn(
+        "User scope will modify your global ~/.claude/settings.json (a .bak snapshot is taken before any change).",
+      );
+    }
+
+    // Project scopes need a target directory; user scope does not.
+    let projectBaseForHook = "";
+    if (scope !== "user") {
+      const base = await ensureProjectBase();
+      if (base === null) continue;
+      projectBaseForHook = base;
+    }
+
     // Cross-scope cleanup: if this hook's marker is already present in a
     // *different* scope's settings file, leaving it there means the hook
     // will fire from both scopes. Detect, prompt, clean before installing.
-    const stale = findStaleScopes(hook, scope, projectBaseResolved);
+    const stale = findStaleScopes(hook, scope, projectBaseForHook);
     for (const entry of stale) {
       log.warn(
         `Found existing ${hook.name} hook in ${relativeFromCwd(entry.settingsPath)} (${entry.scope} scope, ${entry.count} entr${entry.count === 1 ? "y" : "ies"})`,
@@ -718,14 +754,14 @@ export async function installHooks(packageRoot: string): Promise<void> {
         }),
       );
       if (remove) {
-        const cleaned = cleanHookFromScope(hook, entry.scope, projectBaseResolved);
+        const cleaned = cleanHookFromScope(hook, entry.scope, projectBaseForHook);
         log.ok(`removed ${cleaned.removed} from ${relativeFromCwd(cleaned.settingsPath)}`);
       }
     }
 
     let result: InstallHookResult;
     try {
-      result = await installHook(hook, scope, projectBaseResolved, packageRoot);
+      result = await installHook(hook, scope, projectBaseForHook, packageRoot);
     } catch (e) {
       log.error(`${hook.name}: ${(e as Error).message}`);
       continue;
@@ -751,10 +787,12 @@ export async function installHooks(packageRoot: string): Promise<void> {
     } else {
       log.skip(`already registered in ${settingsRel}`);
     }
-  }
 
-  console.log("\nCustomize:");
-  console.log("  • Sound  → edit <hook-dir>/config.json  (e.g. \"sound\": \"Submarine\")");
-  console.log("  • Icon   → replace <hook-dir>/icon.png with your own 512×512 PNG");
-  console.log("  • Docs   → see <hook-dir>/README.md");
+    // Per-hook customize tip with REAL paths instead of <hook-dir>
+    // placeholders the user has to mentally substitute.
+    console.log(`  Customize ${hook.name}:`);
+    console.log(`    • Sound → edit ${dirRel}/config.json  (e.g. "sound": "Submarine")`);
+    console.log(`    • Icon  → replace ${dirRel}/icon.png with your own 512×512 PNG`);
+    console.log(`    • Docs  → ${dirRel}/README.md`);
+  }
 }

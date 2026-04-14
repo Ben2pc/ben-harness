@@ -27,6 +27,7 @@ Interactive menu — select what to install:
 ? Select module types to install:
   ◉ Workflow — CLAUDE.md + AGENTS.md
   ◉ Skills — Development process skills
+  ◉ Recommended Skills — Extra utility skills
   ◉ Plugins — Claude Code plugins
   ◉ Hooks — Claude Code hooks
 ```
