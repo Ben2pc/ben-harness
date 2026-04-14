@@ -8,7 +8,7 @@ if (process.platform !== "darwin") process.exit(0);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULTS = { icon: "./icon.png", sound: "Submarine", sender: null };
+const DEFAULTS = { icon: "./icon.png", sound: "Submarine", sender: null, activate: undefined };
 
 // terminal-notifier's `-sender` re-routes the notification through a
 // specific app's bundle ID — for both the small icon next to the title
@@ -31,10 +31,29 @@ function loadConfig() {
         typeof parsed.sender === "string" && parsed.sender.length > 0
           ? parsed.sender
           : DEFAULTS.sender,
+      // `activate` accepts a bundle ID string, `false` to opt out of
+      // click-to-activate entirely, or undefined for auto-detect.
+      activate:
+        parsed.activate === false || typeof parsed.activate === "string"
+          ? parsed.activate
+          : DEFAULTS.activate,
     };
   } catch {
     return { ...DEFAULTS };
   }
+}
+
+// terminal-notifier's `-activate` brings the named app to the foreground
+// when the user clicks the banner. Auto-detect from $__CFBundleIdentifier:
+// macOS Launch Services injects this env var into every descendant of an
+// app it launched, so a hook spawned from Claude Code → spawned from
+// Terminal/iTerm/Ghostty/Warp/... receives the *exact* bundle ID of the
+// terminal, with no mapping table to maintain. Wrong/missing → click is a
+// no-op (banner + sound still work), so this is safe to enable by default.
+function resolveActivate(cfg) {
+  if (cfg.activate === false) return null;
+  if (typeof cfg.activate === "string" && cfg.activate.length > 0) return cfg.activate;
+  return process.env.__CFBundleIdentifier ?? null;
 }
 
 function resolveIcon(iconPath) {
@@ -64,6 +83,8 @@ process.stdin.on("end", () => {
         "-sound", cfg.sound,
       ];
       if (cfg.sender) args.push("-sender", cfg.sender);
+      const activate = resolveActivate(cfg);
+      if (activate) args.push("-activate", activate);
       if (subtitle) args.push("-subtitle", subtitle);
       if (iconAbs) args.push("-contentImage", iconAbs);
       spawnSync("terminal-notifier", args, { stdio: "ignore" });

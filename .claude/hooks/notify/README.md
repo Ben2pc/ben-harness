@@ -33,6 +33,17 @@ Edit `config.json` next to this README:
   title; the prominent brand image always comes from `icon.png`. Setting
   this to a bundle whose notification permission, banner style, or
   Focus settings are misconfigured will silently swallow notifications.
+- **`activate`** *(optional)* — bundle ID of the app to bring to the
+  foreground when you click the banner. **By default the hook
+  auto-detects** the terminal Claude Code is running in via the
+  `$__CFBundleIdentifier` env var that macOS Launch Services injects
+  into every descendant of an app it launched, so clicking the banner
+  takes you straight back to the terminal that asked for attention —
+  Apple Terminal, iTerm2, Ghostty, Warp, VS Code's integrated terminal,
+  whatever — with no mapping table to maintain. Set this to a string to
+  force a specific app (e.g. `"com.microsoft.VSCode"` to always jump to
+  VS Code), or to `false` to opt out entirely (banner is purely
+  informational, click does nothing).
 
 The hook is macOS-only at runtime. On other platforms it exits silently
 without doing anything, so it's safe to commit into a repo shared with a
