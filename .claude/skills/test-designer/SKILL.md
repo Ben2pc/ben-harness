@@ -59,8 +59,8 @@ Collect **only these inputs** — nothing else:
 
 Test design is a correctness-critical reasoning task, not a rote mechanical one. Use:
 
-- **Model**: strongest available (Opus / GPT-5.4 / equivalent)
-- **Effort**: highest available (`high` / `max`)
+- **Model**: strongest reasoning model the runtime offers — inherit if the main Agent is already on that tier; otherwise override. Don't hardcode a specific brand name
+- **Effort**: `xhigh` (the maximum level the runtime supports). Escalation ladder: `low` → `medium` → `high` → `xhigh`
 - **Tools**: Read / Grep / Glob on code paths; Write on test files only
 - **Permission**: read-only on non-test files; writable on test files
 

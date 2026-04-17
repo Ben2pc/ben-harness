@@ -115,8 +115,8 @@ Adjust the word budget or format per reviewer as needed (e.g., Security may just
 - **Default**: in-conversation subagent (read-only, parallel-safe)
 - **Use independent Agent when**:
   - UX review benefits from zero-context fresh eyes
-  - Cross-model blind spot coverage is valuable (e.g., GPT reviews Claude-written code for security)
-  - Architectural trade-offs require a heavyweight model at high reasoning effort
+  - Cross-model blind spot coverage is valuable (dispatch a different-family reviewer — e.g., Codex reviewing Claude-written code, or Claude reviewing Codex-written code — so the reviewer doesn't share the writer's blind spots)
+  - Architectural trade-offs require the strongest reasoning model the runtime offers at `xhigh` effort
 - **Never required**: committing `.claude/agents/` files. Subagent configuration is runtime, per-dispatch.
 
 ## Follow-up
@@ -132,7 +132,7 @@ After synthesis:
 - ❌ Dispatching subagents without specifying output format → context flood
 - ❌ Serializing reviewers that are independent → wastes time
 - ❌ Parallel subagents editing the same file → use `isolation: "worktree"` or assign to one reviewer
-- ❌ Asking subagents to coordinate with each other mid-review → Claude Code has no agent-to-agent channel. If one reviewer's finding affects another's scope, serialize (A → main Agent → B) instead
+- ❌ Asking subagents to coordinate with each other mid-review → no current CLI runtime (Claude Code, Codex CLI, etc.) has an agent-to-agent channel. If one reviewer's finding affects another's scope, serialize (A → main Agent → B) instead
 - ❌ Reviewing Draft PRs formally — draft is for informal early feedback; wait for Ready
 
 ## Example invocation
