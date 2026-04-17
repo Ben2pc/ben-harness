@@ -55,6 +55,26 @@ const cases = [
     expect: { status: 0, stdoutEq: "" },
   },
   {
+    name: "echo containing 'gh pr create' does NOT trigger the hook",
+    payload: {
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: `echo "don't run gh pr create yet"` },
+      tool_response: { stdout: "don't run gh pr create yet\n", exit_code: 0 },
+    },
+    expect: { status: 0, stdoutEq: "" },
+  },
+  {
+    name: "git commit -m containing 'gh pr create' does NOT trigger the hook",
+    payload: {
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_input: { command: `git commit -m "note about gh pr create workflow"` },
+      tool_response: { stdout: "", exit_code: 0 },
+    },
+    expect: { status: 0, stdoutEq: "" },
+  },
+  {
     name: "gh pr create failure (non-zero exit) is ignored",
     payload: {
       hook_event_name: "PostToolUse",

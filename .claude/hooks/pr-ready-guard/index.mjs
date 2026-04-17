@@ -25,7 +25,9 @@ process.stdin.on("end", () => {
 
     const cmd = data?.tool_input?.command;
     if (typeof cmd !== "string") return exit0();
-    if (!/\bgh\s+pr\s+ready\b/.test(cmd)) return exit0();
+    // Strip simple quoted runs so mentions of "gh pr ready" inside
+    // echo args, git commit messages, etc. don't trigger the hook.
+    if (!/\bgh\s+pr\s+ready\b/.test(stripQuoted(cmd))) return exit0();
 
     // Block checks run in a fixed order so the reason the Agent sees
     // is the first unambiguous structural problem, not a grab-bag.
@@ -155,6 +157,29 @@ function summarize(ref, body) {
   const tail =
     "Confirm acceptance criteria are met and the body reflects the final commits. Use `gh pr edit` to sync anything drifted.";
   return [head, headingLine, todoLine, tail].join("\n");
+}
+
+// Minimal quote-stripper so mentions of our match phrase inside quoted
+// args (echo, git commit -m, etc.) don't false-positive the hook.
+// Handles '...' and "..." with backslash escapes inside double quotes;
+// unclosed quote → return input unchanged (upstream regex decides).
+function stripQuoted(cmd) {
+  let out = "";
+  let quote = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (quote) {
+      if (c === quote) quote = null;
+      else if (c === "\\" && quote === '"' && i + 1 < cmd.length) i++;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      quote = c;
+      continue;
+    }
+    out += c;
+  }
+  return quote === null ? out : cmd;
 }
 
 function block(reason) {

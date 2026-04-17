@@ -62,6 +62,24 @@ const cases = [
     expect: { status: 0, stdoutEq: "" },
   },
   {
+    name: "echo containing 'gh pr ready' does NOT trigger the hook",
+    setup: () => ({ cwd: makeRepo(), cmd: `echo "don't run gh pr ready yet"` }),
+    expect: { status: 0, stdoutEq: "" },
+  },
+  {
+    name: "git commit -m containing 'gh pr ready' does NOT trigger the hook",
+    setup: () => {
+      const dir = makeRepo();
+      // Also plant a stray findings.md to prove: if the hook DID
+      // mistakenly trigger on this quoted command, it would block
+      // on the stray doc. Since the quote-strip kicks in first, the
+      // hook exits 0 silently despite the stray presence.
+      fs.writeFileSync(path.join(dir, "findings.md"), "# would block if hook fired\n");
+      return { cwd: dir, cmd: `git commit -m "note about gh pr ready workflow"` };
+    },
+    expect: { status: 0, stdoutEq: "" },
+  },
+  {
     name: "stray findings.md at repo root blocks",
     setup: () => {
       const dir = makeRepo();

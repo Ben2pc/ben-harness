@@ -26,7 +26,9 @@ process.stdin.on("end", () => {
 
     const cmd = data?.tool_input?.command;
     if (typeof cmd !== "string") return exit0();
-    if (!/\bgh\s+pr\s+create\b/.test(cmd)) return exit0();
+    // Strip simple quoted runs so mentions of "gh pr create" inside
+    // echo args, git commit messages, etc. don't trigger the hook.
+    if (!/\bgh\s+pr\s+create\b/.test(stripQuoted(cmd))) return exit0();
 
     // Avoid injecting when the tool reported an error — PR wasn't
     // created, so there's nothing to snapshot.
@@ -68,9 +70,9 @@ function looksLikeFailure(resp) {
 }
 
 // Pull a PR reference out of the tool_response. gh pr create prints the
-// URL on success; we look for github.com/.../pull/N. Fall back to
-// parsing `--base <branch>` or just the branch name in the command, but
-// in practice the URL path is the reliable signal.
+// URL on success; we look for github.com/.../pull/N. If no URL is in
+// the response, we return null and the caller falls back to a passive
+// nudge — we don't try to reconstruct the ref from the command.
 function extractPRRef(resp, cmd) {
   const haystack = stringifyResponse(resp) + "\n" + cmd;
   const m = haystack.match(/https?:\/\/[^\s"]+\/pull\/(\d+)/);
@@ -84,15 +86,49 @@ function stringifyResponse(resp) {
   if (typeof resp !== "object") return String(resp);
   // Walk known fields — different Claude Code versions use different
   // shapes (stdout/output/text/content). Collect all string-valued
-  // leaves.
+  // leaves. Track seen objects to short-circuit cycles; also cap
+  // depth so a pathological payload can't blow the stack.
   const parts = [];
-  const visit = (v) => {
+  const seen = new WeakSet();
+  const visit = (v, depth) => {
+    if (depth > 16) return;
     if (typeof v === "string") parts.push(v);
-    else if (Array.isArray(v)) v.forEach(visit);
-    else if (v && typeof v === "object") Object.values(v).forEach(visit);
+    else if (Array.isArray(v)) {
+      if (seen.has(v)) return;
+      seen.add(v);
+      v.forEach((x) => visit(x, depth + 1));
+    } else if (v && typeof v === "object") {
+      if (seen.has(v)) return;
+      seen.add(v);
+      Object.values(v).forEach((x) => visit(x, depth + 1));
+    }
   };
-  visit(resp);
+  visit(resp, 0);
   return parts.join("\n");
+}
+
+// Minimal quote-stripper so mentions of our match phrase inside quoted
+// args (echo, git commit -m, heredoc-ish strings) don't false-positive
+// the hook. Handles '...' and "..." with backslash escapes inside
+// double quotes; unclosed quote → return input unchanged (upstream
+// regex decides).
+function stripQuoted(cmd) {
+  let out = "";
+  let quote = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (quote) {
+      if (c === quote) quote = null;
+      else if (c === "\\" && quote === '"' && i + 1 < cmd.length) i++;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      quote = c;
+      continue;
+    }
+    out += c;
+  }
+  return quote === null ? out : cmd;
 }
 
 function fetchBody(prRef) {

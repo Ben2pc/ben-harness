@@ -14,7 +14,7 @@
 | **Skills** | 开发流程 skills —— brainstorming、systematic-debugging、TDD、verification、planning、playwright |
 | **Recommended Skills** | 可选的工具类 skills（如 `ui-ux-pro-max`），在 workflow skills 之外按需追加 |
 | **Plugins** | 推荐的 Claude Code 插件 —— skill-creator、claude-md-management、codex |
-| **Hooks** | Claude Code hooks（当前包含 `notify` —— 带品牌图标和提示音的原生 macOS 通知） |
+| **Hooks** | Claude Code hooks：`notify`（macOS 通知）、`pr-create-guard`（`gh pr create` 后注入 PR body 快照的 PostToolUse）、`pr-ready-guard`（`gh pr ready` 前按游离 planning 文档 / 未 push commits 拦截的 PreToolUse） |
 
 ## 快速开始
 

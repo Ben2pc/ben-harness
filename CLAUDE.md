@@ -43,7 +43,8 @@ Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `p
 |---|---|---|
 | `docs/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at step 10 when the PR is marked Ready for Review. | Permanent after PR merge |
 | `docs/rules/` | Coding conventions, review checklists, naming / style decisions. | Long-lived, maintained |
-| `docs/` (future) | Reserved for structured sets added on demand: `architecture/` (design docs), `runbooks/` (ops procedures), `adr/` (architecture decision records), `onboarding/`, etc. Prefer one directory per document category over mixing. | Varies |
+| `docs/architecture/` | Long-lived design docs (module layouts, data flows, component responsibilities). Seeded by the initial `auriga-cli-design.md` spec. | Long-lived |
+| `docs/` (other categories) | Add one directory per new document category on demand: `runbooks/` (ops procedures), `adr/` (architecture decision records), `onboarding/`, etc. One directory per category; don't mix. | Varies |
 
 ### Session-ephemeral planning paths (before archival)
 
