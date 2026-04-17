@@ -1,4 +1,4 @@
-# 通用 Workflow (v1.2.0)
+# 通用 Workflow (v1.3.0)
 
 1. 需求澄清：新需求先用 `brainstorming` 澄清requirement。**requirement聚焦"做什么"和验收标准，不写具体技术路径**，如果是产品功能优先关注"Why"，让实现阶段的 Agent 自行决定怎么做。
 
@@ -12,15 +12,17 @@
 
 6. 编码前准备4：遇到 bug、测试失败或异常行为时，先按 `systematic-debugging` 找根因，再决定修复。
 
-7. TDD：非微小代码改动遵循 `test-driven-development`：先写失败测试，再写最小实现，再回归验证。**每个 task 开始前明确可测试的验收标准**（具体功能点 + 验收条件 + 边界场景），不是最后才检查。对于复杂功能，调用 `test-designer` skill——它内置 **Independent Evaluation**，派遣零上下文的 agent，仅接收需求描述和代码路径（不包含实现方案），以最高推理力度返回可执行的失败测试。绿灯阶段的实现如果自然跨多个独立文件，调用 `parallel-implementation` skill——它返回分片计划（文件归属、依赖关系、每片的输出格式契约）；根据计划用并行 `Agent` 调用 + `isolation: "worktree"` 派遣。
+7. TDD：非微小代码改动遵循 `test-driven-development`：先写失败测试，再写最小实现，再回归验证。**每个 task 开始前明确可测试的验收标准**（具体功能点 + 验收条件 + 边界场景），不是最后才检查。对于复杂功能，调用 `test-designer` skill——它内置 **Independent Evaluation**，派遣零上下文的 agent，仅接收需求描述和代码路径（不包含实现方案），以最高推理力度返回可执行的失败测试。
 
-8. 完成编码后：任何"已完成 / 已修复 / 可以提交 / 可以进入评审"的判断前，都先按 `verification-before-completion` 运行并检查完整验证。对涉及 UI 的改动，使用 `playwright-cli` 进行交互验证（像用户一样操作应用），不只是看代码。
+8. 并行实现：绿灯阶段**满足以下任一条件**时才调用 `parallel-implementation`：(a) 跨多个独立模块的 **0→1 新建**——规划分层并行切片；(b) 改动涉及 **≥3 个模块**——用 `AskUserQuestion` 让用户确认后再派遣；(c) 改动涉及 **≥5 个文件且每个文件 diff >50 行**——主动建议并行。skill 返回分片计划（文件归属、依赖关系、每片的输出格式契约）；根据计划用并行 `Agent` 调用 + `isolation: "worktree"` 派遣。低于这些门槛就串行写——多 agent 的开销不值得。
 
-9. PR就绪：在验证完成、基准分支确认无误，并且 PR 描述已补全变更范围、验收标准、风险和剩余 TODO 之前，保持 PR 为 Draft。完成这些条件后，将 PR 标记为 Ready for Review。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
+9. 完成编码后：任何"已完成 / 已修复 / 可以提交 / 可以进入评审"的判断前，都先按 `verification-before-completion` 运行并检查完整验证。对涉及 UI 的改动，使用 `playwright-cli` 进行交互验证（像用户一样操作应用），不只是看代码。
 
-10. PR评审：Draft PR 阶段可以先获取早期反馈。PR 标记为 Ready for Review 后，正式 review 必须通过 `deep-review` skill 发起（`/deep-review` 或"跑一次 deep review"）。该 skill 内置 **Independent Evaluation** 和完整的分派矩阵——必选三维度（正确性、一致性、文档同步），按变更类型条件派出（`logic` → 安全性 + 边界处理，`ui` → 交互体验，`frontend-perf` → 性能，`structure` → 工程结构），以及非微小变更时的通用可维护性。`/review`（插件 slash command）保留作为轻量 fallback。
+10. PR就绪：在验证完成、基准分支确认无误，并且 PR 描述已补全变更范围、验收标准、风险和剩余 TODO 之前，保持 PR 为 Draft。完成这些条件后，将 PR 标记为 Ready for Review。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
 
-11. 关于 Review：当 review 发现存在架构腐化时（复用性、质量、效率、清晰度、一致性、可维护性），在不影响测试结果的情况下，可以在当前 PR 修复小问题。改动风险大的问题，提醒人类伙伴创建 issue 来追踪。
+11. PR评审：Draft PR 阶段可以先获取早期反馈。PR 标记为 Ready for Review 后，正式 review 必须通过 `deep-review` skill 发起（`/deep-review` 或"跑一次 deep review"）。该 skill 内置 **Independent Evaluation** 和完整的分派矩阵——必选三维度（正确性、一致性、文档同步），按变更类型条件派出（`logic` → 安全性 + 边界处理，`ui` → 交互体验，`frontend-perf` → 性能，`structure` → 工程结构），以及非微小变更时的通用可维护性。`/review`（插件 slash command）保留作为轻量 fallback。
+
+12. 关于 Review：当 review 发现存在架构腐化时（复用性、质量、效率、清晰度、一致性、可维护性），在不影响测试结果的情况下，可以在当前 PR 修复小问题。改动风险大的问题，提醒人类伙伴创建 issue 来追踪。
 
 ## 快速开发流程（bug fix / 小重构 / 小功能）
 

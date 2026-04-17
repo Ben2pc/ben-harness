@@ -24,7 +24,7 @@
     "parallel-implementation": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "7951392864433398fcb942dee50175c7d193f4bcc25fbc9eea3776bf2f62a566"
+      "computedHash": "f52bcb8647884134802b891deb06391c34f5e00523b4040b6735ae1ff173c2d0"
     },
     "planning-with-files": {
       "source": "OthmanAdi/planning-with-files",

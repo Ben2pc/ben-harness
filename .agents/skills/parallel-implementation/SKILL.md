@@ -1,6 +1,6 @@
 ---
 name: parallel-implementation
-description: "Plan how to slice a non-trivial coding task across parallel subagents. Returns a dispatch plan (file assignments, dependencies, output-format contracts) — the main Agent then executes it with the Agent tool + `isolation: \"worktree\"`. Invoke during TDD green phase when implementation naturally spans multiple independent files, or when the user explicitly asks for parallel / multi-agent implementation."
+description: "Plan how to slice a non-trivial coding task across parallel subagents. Returns a dispatch plan (file assignments, dependencies, output-format contracts) — the main Agent then executes it with the Agent tool + `isolation: \"worktree\"`. Invoke only when work justifies multi-agent overhead: (a) greenfield 0→1 across multiple independent modules, (b) change touches ≥3 modules, or (c) ≥5 files each with >50 lines of diff. Small changes write inline."
 ---
 
 # Parallel Implementation
@@ -9,17 +9,20 @@ Planner skill — returns a slice plan, does **not** invoke subagents itself. Th
 
 ## When to Use
 
-Any time a non-trivial coding task naturally spans 3+ independent files or modules, triggered by:
+Invoke **only** when one of these triggers fires:
 
-- TDD **green phase** after a multi-file failing test suite
-- User explicitly asks for "parallel write", "多 agent 并行实现", or "split this across subagents"
-- The main Agent wants to confirm a split is safe before dispatching
+1. **Greenfield 0→1 across multiple independent modules** → plan a **layered parallel split** (e.g., data / service / UI layers each as their own slice). Greenfield independence makes this the cleanest parallel case.
+2. **Change touches ≥3 modules** → the main Agent should confirm with the user via `AskUserQuestion` whether to parallelize; some cross-module edits are better serialized.
+3. **Change touches ≥5 files AND each file's diff exceeds 50 lines** → the total work justifies dispatch overhead; recommend parallel.
+4. **User explicitly asks** for "parallel write", "多 agent 并行实现", or "split this across subagents" → honor regardless of size.
 
 **Don't use for:**
-- Single-file changes → the main Agent writes it
-- Two-file changes that are small (< ~30 lines diff each) → just write them
+- Single-file, 2-file, or 3–4 file changes where any slice's diff is <50 lines → main Agent writes it inline
+- Refactors where all callers cascade from a single change (e.g., renaming a widely-used helper) → serialize through main Agent
 - Work with serial dependencies (B needs A's output) → that's a pipeline, not parallel
 - Pure read tasks (review, search, analysis) → parallel subagents without slicing are fine; no planning needed
+
+Multi-agent overhead (worktree setup, context briefing, result merging, conflict resolution) is real. When in doubt, inline wins.
 
 ## The Iron Law
 
@@ -33,8 +36,8 @@ Violating this = guaranteed merge conflicts or silent state corruption.
 
 Ask: **can this task be cut into pieces whose inputs and outputs don't overlap?**
 
-- ✅ "Update README.md, README.zh-CN.md, and CLAUDE.md to reference new skill" — three files, each slice self-contained
-- ✅ "Implement `plugins.ts` resolver, write its unit tests in `tests/plugins.test.ts`, add CLI flag to `cli.ts`" — three files, dependencies resolvable at boundaries
+- ✅ "Implement `plugins.ts` resolver, write its unit tests in `tests/plugins.test.ts`, add CLI flag to `cli.ts`" — three files, dependencies resolvable at boundaries, each slice carries substantive logic
+- ✅ "Greenfield: build data layer in `store.ts`, service layer in `service.ts`, UI layer in `ui.tsx`, each with its own tests" — layered 0→1, no shared mid-execution state
 - ❌ "Refactor `utils.ts` to extract a logging helper and update all callers" — all callers edit sites cascade from the extraction; serialize
 - ❌ "Add retry to the exec wrapper AND migrate exec callers to use it" — B depends on A; pipeline, not parallel
 
@@ -66,11 +69,13 @@ Example:
 
 For each remaining slice, estimate diff size. Rule of thumb:
 
-- **< ~30 lines of actual change** → main Agent writes it directly; dispatch overhead (context setup, worktree spin-up, result merge) outweighs parallelism gain
-- **~30–150 lines** → dispatch candidate
+- **< 50 lines of actual change per slice** → drop from the plan; main Agent writes inline. Dispatch overhead (context setup, worktree spin-up, result merge) outweighs parallelism gain.
+- **~50–150 lines** → dispatch candidate
 - **> 150 lines or architectural** → dispatch, and note "override to a stronger reasoning model at `xhigh` effort (the maximum the runtime supports)" on the slice if the main Agent's current model is not already that
 
 Drop small slices from the plan; note them as "main Agent handles inline".
+
+**Minimum-slices gate**: if fewer than 3 dispatchable slices remain after filtering, **terminate and return "serialize"**. Below three parallel writers, the dispatch ceremony (worktree spin-up, context briefing, merge) isn't worth the context cost — the main Agent writes them sequentially.
 
 ### Step 5: Output contract per slice
 
