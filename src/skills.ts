@@ -6,9 +6,11 @@ import type { SkillsLock } from "./utils.js";
 
 const WORKFLOW_SKILLS = [
   "brainstorming",
+  "deep-review",
   "planning-with-files",
   "playwright-cli",
   "systematic-debugging",
+  "test-designer",
   "test-driven-development",
   "ui-ux-pro-max",
   "verification-before-completion",
