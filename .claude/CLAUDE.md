@@ -29,7 +29,9 @@ src/
 
 ## Key Conventions
 
-- **Skill categorization**: `WORKFLOW_SKILLS` in `skills.ts` lists standard workflow skills. Everything else in `skills-lock.json` is "recommended". Adding a recommended skill: `npx skills add <repo> --skill <name>` + add description to `RECOMMENDED_DESCRIPTIONS` in `skills.ts`.
+- **Skill categorization**: `WORKFLOW_SKILLS` in `skills.ts` is the curated default-on set (skills the workflow in `CLAUDE.md` directly references). Everything else in `skills-lock.json` is "recommended" (opt-in utilities).
+  - **Adding a workflow skill**: author `SKILL.md` (here or in an upstream repo) → `npx skills add <repo> --skill <name>` to update `skills-lock.json` → add name to the `WORKFLOW_SKILLS` array in `src/skills.ts` → add a row to both README skills tables → reference it from the relevant `CLAUDE.md` step if the skill replaces prose there.
+  - **Adding a recommended skill**: `npx skills add <repo> --skill <name>` + add description to `RECOMMENDED_DESCRIPTIONS` in `src/skills.ts`.
 - **Plugin config**: `.claude/plugins.json` defines available plugins. Marketplace sources auto-install.
 - **Hook config**: `.claude/hooks/hooks.json` defines available hooks. Each hook is a self-contained directory under `.claude/hooks/<name>/`; the canonical entrypoint is `index.mjs` and the registry's `files[]` is the source of truth for what gets shipped (defaults: runtime + config + assets + README + an optional `test.mjs` smoke test). Adding a new hook: drop a new directory + add an entry to `hooks.json`. Any dev-only assets a hook needs (icon source files, generators, fonts) should live OUTSIDE `.claude/hooks/<name>/` so the installer can copy `.claude/hooks/<name>/` wholesale to user projects. Every value in `hooks.json` flows through `validateHookEntry` in `hooks.ts` at load time — `hook.name`, `hook.files[]`, `hook.preserveFiles[]`, and `dep.name` are all path/identifier validated before any filesystem touch, because the registry is fetched from raw GitHub at runtime and must be treated as untrusted input.
 - **Hook payload fetch**: `hooks.json` is the only hook-related file in `CONTENT_FILES` (preloaded at startup). Each hook's individual files (`index.mjs`, `icon.png`, etc.) are lazy-fetched into the same `packageRoot` temp dir on demand by `ensureHookFilesFetched` — only when a user actually selects that hook. `installHooks` then copies from `packageRoot` into the user's target directory. In DEV mode `packageRoot` is the live repo, so the lazy fetch is a no-op.
@@ -65,6 +67,7 @@ npm test         # tsc -p tsconfig.test.json → dist-test/, then node --test
 
 - Version in `package.json` follows semver: patch for bugfixes, minor for new features, major for breaking changes.
 - Bump version before merging feature PRs. Publish: `npm publish`.
+- **Two versions track independently**: `package.json` is the **CLI tool** version; the `CLAUDE.md` workflow header (e.g. `# General Workflow (v1.1.0)`) is the **workflow content** version. A CLI change may not touch the workflow; a workflow rewrite usually bumps both. Their divergence is intentional — don't treat it as a bug during review.
 
 ## Principles
 

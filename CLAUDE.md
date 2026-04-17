@@ -1,4 +1,4 @@
-# General Workflow (v1.0.0)
+# General Workflow (v1.1.0)
 
 1. Requirement Clarification: Use `brainstorming` to clarify requirements for new features. **Requirements should focus on "what to do" and acceptance criteria, not specific technical paths.** For product features, prioritize "Why" and let the implementation-stage Agent decide how.
 
@@ -12,28 +12,13 @@
 
 6. Pre-coding 4: When encountering bugs, test failures, or unexpected behavior, follow `systematic-debugging` to find root cause before fixing.
 
-7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, follow **Independent Evaluation** for test design: use an independent subagent that receives only the requirement description and code file paths, without implementation context, and use the strongest available model at highest reasoning effort.
+7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, invoke the `test-designer` skill — it encodes **Independent Evaluation**, dispatching a context-free agent that sees only the requirement and code paths (not the implementation approach) and returns executable failing tests at highest reasoning effort.
 
 8. Post-coding: Before any "done / fixed / ready to commit / ready for review" judgment, run and check full verification per `verification-before-completion`. For UI changes, use `playwright-cli` for interaction verification (operate the app like a user), not just code review.
 
 9. PR Readiness: Keep the PR in Draft until verification is complete, the base branch is confirmed, and the PR description is updated with scope, acceptance criteria, risks, and remaining TODOs. Then mark the PR Ready for Review. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
 
-10. PR Review: Early feedback may happen on a Draft PR. After the PR is Ready for Review, formal review must use `/review`, follow **Independent Evaluation**, and reference project specification docs. Use **Agent Dispatch Principles** for execution details. Before dispatching, **first analyze the PR diff to classify change types** (multiple tags may apply): `logic` (code logic changes), `ui` (CLI/TUI/UI changes), `frontend-perf` (frontend/mobile changes), `structure` (new files, module reorganization). Then dispatch by the following tiered dimensions:
-
-   **Always required** (every review must dispatch these):
-   - **Correctness**: Does it implement requirements correctly? Any logic errors?
-   - **Consistency**: Does it follow existing project patterns and conventions?
-   - **Documentation Sync**: Do changes cause README, CLAUDE.md, etc. to be inconsistent with reality? Remove outdated or redundant descriptions — no documentation is better than wrong documentation. Code is documentation — don't add redundant descriptions of code behavior.
-
-   **Conditional — dispatch by change type tag**:
-   - `logic` → **Security**: Does it introduce injection, XSS, or other vulnerabilities?
-   - `logic` → **Edge Cases**: Exception inputs, concurrency, resource cleanup
-   - `ui` → **UX** (dedicated subagent): Review all interaction flows from user perspective — dead ends, no feedback after actions, misclick risks, redundant operations, invisible state
-   - `frontend-perf` → **Performance**: Rendering (unnecessary re-renders, unvirtualized large lists, animation jank), bundle size (un-tree-shaken deps, uncompressed large assets), network (redundant requests, no caching, waterfall loading), memory (leaks, unreleased listeners/timers). Mobile: additionally check startup time, offscreen rendering, main thread blocking
-   - `structure` → **Engineering Structure**: Are new files in the right directories, following existing layering/packaging conventions? Any circular dependencies or cross-layer direct calls? Have impact scopes of shared module changes been assessed? Any reimplementation of existing reusable modules?
-
-   **General** (for non-trivial changes):
-   - **Maintainability**: Naming, structure, over-abstraction or under-abstraction
+10. PR Review: Early feedback may happen on a Draft PR. After the PR is Ready for Review, formal review must use the `deep-review` skill (invoke via `/deep-review` or ask "run a deep review"). The skill encodes **Independent Evaluation** and the full dispatch matrix — required three dimensions (correctness, consistency, documentation sync), conditional dimensions by change-type tag (`logic` → security + edge cases, `ui` → UX, `frontend-perf` → performance, `structure` → engineering structure), and general maintainability for non-trivial changes. `/review` (the plugin slash command) remains as a lightweight fallback.
 
 11. About Review: When review finds architectural decay (for reuse, quality, efficiency, clarity, consistency, maintainability), small issues can be fixed in the current PR without affecting test results. For high-risk changes, remind your human partner to create an issue for tracking.
 
@@ -56,6 +41,7 @@ The only exception to skip TDD: pure documentation, pure configuration, or pure 
 - **Continuously fight entropy**: Pay down tech debt incrementally — don't let it accumulate into painful cleanups.
 - **Components are detachable**: Each workflow step encodes an assumption that "the model isn't good at this." Periodically reassess as model capabilities improve, changing one variable at a time.
 - **Instruction files are directories, not encyclopedias**: Keep CLAUDE.md / AGENTS.md lean (~100 lines), serving as entry points and navigation. Detailed specs go in `docs/` topic files. Subsystems can have their own local instruction files. When everything is important, nothing is — information overload causes Agents to pattern-match locally rather than understand globally. Always create an AGENTS.md symlink to CLAUDE.md (`ln -s CLAUDE.md AGENTS.md`) to ensure different Agent frameworks read the same instructions.
+- **Automation ladder (start conversational, codify later)**: Subagent invocation has five layers, from flexible to locked-in: in-conversation subagent → `.claude/agents/` → CLAUDE.md policy → Skill → Hook. **Each layer up the ladder locks in one more assumption.** Only promote a pattern up the ladder after it stabilizes across 3+ real uses. Premature promotion creates brittleness; `.claude/agents/` files accumulate, hooks fire in wrong contexts, and skills encode outdated dispatch structures. When in doubt, stay low on the ladder.
 
 # Agent Dispatch Principles
 
@@ -81,3 +67,9 @@ In-conversation subagents share the main Agent's working directory. Key rules:
   - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet
   - ✅ "Design the plugin dependency resolution strategy" → opus
   - ✅ Complex review with many architectural trade-offs → GPT 5.4 with high effort for cross-model blind spot coverage
+- **Always specify the output format** (shape + scope/length): a subagent without a format contract will dump verbose context back, cancelling the context benefit of dispatching. The rule is "must be explicit" — the specific format is task-dependent (e.g., "summary ≤300 words", "punch list, one finding per line", "diff + one-line rationale each", "structured JSON `{...}`", "one-paragraph verdict + one-line rationale"). Don't enumerate formats; pick the right one per task.
+- **Anti-patterns — four scenarios where you should NOT dispatch parallel subagents**:
+  1. **Serial-dependent tasks** — later step needs the full output of the earlier one; you gain nothing from parallelizing
+  2. **Same-file parallel writes** — guaranteed conflict (mirror of "isolate parallel writes" above)
+  3. **Tasks too small** — dispatch overhead > savings
+  4. **Tasks requiring subagents to exchange intermediate state** — Claude Code has no agent-to-agent channel. Test: "can the task be split into slices with independent inputs and independent outputs?" If no, either serialize (A → main Agent relays to B) or merge into a single-line task. Note: sequential handoff (A → main → B) is NOT inter-agent communication; it's a normal pipeline.

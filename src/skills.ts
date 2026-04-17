@@ -4,11 +4,16 @@ import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
 import type { SkillsLock } from "./utils.js";
 
+// Curated default-on set: skills that the workflow in the root CLAUDE.md
+// directly references. Anything else in skills-lock.json is surfaced via
+// installRecommendedSkills as an opt-in utility.
 const WORKFLOW_SKILLS = [
   "brainstorming",
+  "deep-review",
   "planning-with-files",
   "playwright-cli",
   "systematic-debugging",
+  "test-designer",
   "test-driven-development",
   "ui-ux-pro-max",
   "verification-before-completion",
