@@ -59,6 +59,7 @@ npx auriga-cli
 | ui-ux-pro-max | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | UI/UX 设计与开发增强 |
 | deep-review | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | 多维度 PR review 编排器（必选 + 条件 + punch list 汇总） |
 | test-designer | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | TDD 红灯阶段的 Independent Evaluation 测试设计器 |
+| parallel-implementation | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | 多 subagent 并行写代码时的切片计划器 |
 
 支持 project 和 global 两种安装范围。
 

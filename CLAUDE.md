@@ -1,4 +1,4 @@
-# General Workflow (v1.1.0)
+# General Workflow (v1.2.0)
 
 1. Requirement Clarification: Use `brainstorming` to clarify requirements for new features. **Requirements should focus on "what to do" and acceptance criteria, not specific technical paths.** For product features, prioritize "Why" and let the implementation-stage Agent decide how.
 
@@ -12,7 +12,7 @@
 
 6. Pre-coding 4: When encountering bugs, test failures, or unexpected behavior, follow `systematic-debugging` to find root cause before fixing.
 
-7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, invoke the `test-designer` skill — it encodes **Independent Evaluation**, dispatching a context-free agent that sees only the requirement and code paths (not the implementation approach) and returns executable failing tests at highest reasoning effort.
+7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, invoke the `test-designer` skill — it encodes **Independent Evaluation**, dispatching a context-free agent that sees only the requirement and code paths (not the implementation approach) and returns executable failing tests at highest reasoning effort. When the green-phase implementation naturally splits across multiple independent files, invoke the `parallel-implementation` skill — it returns a slice plan (file assignments, dependencies, per-slice output-format contracts); dispatch accordingly with parallel `Agent` calls + `isolation: "worktree"` per plan.
 
 8. Post-coding: Before any "done / fixed / ready to commit / ready for review" judgment, run and check full verification per `verification-before-completion`. For UI changes, use `playwright-cli` for interaction verification (operate the app like a user), not just code review.
 
@@ -52,24 +52,17 @@ Choose the right level of delegation:
 | Single file fix, clear solution | Do it yourself — no subagent overhead |
 | Parallel read tasks (review, search, analysis) | In-conversation subagents, no isolation needed |
 | Single subagent writes code | In-conversation subagent, no isolation needed |
-| Multiple subagents write code | In-conversation subagents + `isolation: "worktree"`, split by file |
+| Multiple subagents write code | Invoke `parallel-implementation` skill to plan the split, then dispatch with `isolation: "worktree"` per plan |
 | Need fresh perspective with zero context pollution | Independent Agent (e.g., test design per step 7) |
 | Cross-model blind spot coverage | Independent Agent (e.g., GPT reviews Claude's code) |
 | Unsure which approach fits | `AskUserQuestion` — present options with your recommendation |
 
 In-conversation subagents share the main Agent's working directory. Key rules:
 
-- **Isolate parallel writes**: Parallel code writing **must** use `isolation: "worktree"`. Single writer needs no isolation.
-  - ✅ 3 subagents review different dimensions in parallel (read-only) — no isolation
-  - ✅ 2 subagents fix `cli.ts` and `utils.ts` respectively with worktree — different files, auto-merge
-  - ❌ 2 subagents both edit `utils.ts` with worktree — same file, will conflict. Assign to one subagent
+- **Isolate parallel writes**: Parallel code writing **must** use `isolation: "worktree"`; single writer needs no isolation. For slicing decisions (what to split, where it collides, when to skip dispatch), use the `parallel-implementation` skill — it encodes the file-assignment, collision-merge, and size-filter rules that used to live here.
 - **Match model and effort to task**: Flexibly choose model (sonnet/opus, gpt-5.4/gpt-5.4-mini) and effort level based on task complexity.
   - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet
   - ✅ "Design the plugin dependency resolution strategy" → opus
   - ✅ Complex review with many architectural trade-offs → GPT 5.4 with high effort for cross-model blind spot coverage
 - **Always specify the output format** (shape + scope/length): a subagent without a format contract will dump verbose context back, cancelling the context benefit of dispatching. The rule is "must be explicit" — the specific format is task-dependent (e.g., "summary ≤300 words", "punch list, one finding per line", "diff + one-line rationale each", "structured JSON `{...}`", "one-paragraph verdict + one-line rationale"). Don't enumerate formats; pick the right one per task.
-- **Anti-patterns — four scenarios where you should NOT dispatch parallel subagents**:
-  1. **Serial-dependent tasks** — later step needs the full output of the earlier one; you gain nothing from parallelizing
-  2. **Same-file parallel writes** — guaranteed conflict (mirror of "isolate parallel writes" above)
-  3. **Tasks too small** — dispatch overhead > savings
-  4. **Tasks requiring subagents to exchange intermediate state** — Claude Code has no agent-to-agent channel. Test: "can the task be split into slices with independent inputs and independent outputs?" If no, either serialize (A → main Agent relays to B) or merge into a single-line task. Note: sequential handoff (A → main → B) is NOT inter-agent communication; it's a normal pipeline.
+- **Subagents cannot exchange intermediate state**: Claude Code has no agent-to-agent channel. If a task requires mid-execution coordination between subagents, either serialize (A → main Agent relays to B) or merge into a single-line task. Sequential handoff (A → main → B) is NOT inter-agent communication; it's a normal pipeline.
