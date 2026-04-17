@@ -113,7 +113,7 @@ const cases = [
     name: "archived worklog copy does NOT count as stray",
     setup: () => {
       const dir = makeRepo();
-      const worklogDir = path.join(dir, "docs", "worklog-2026-04-17-foo");
+      const worklogDir = path.join(dir, "docs", "worklog", "worklog-2026-04-17-foo");
       fs.mkdirSync(worklogDir, { recursive: true });
       fs.writeFileSync(path.join(worklogDir, "findings.md"), "archived\n");
       // No root-level copies; this one is archived.

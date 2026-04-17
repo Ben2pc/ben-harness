@@ -10,7 +10,7 @@ Runs only when the matched tool is `Bash` and its command contains `gh pr ready`
 
 Checks run in fixed order; the first to fire is the reason the Agent sees:
 
-1. **Stray planning docs** — any of `findings.md`, `progress.md`, `task_plan.md` at repo root, OR any `*.md` under `docs/superpowers/specs/`. Per the `Document Conventions` section of `CLAUDE.md`, these are session-ephemeral and must be archived to `docs/worklog-<YYYY-MM-DD>-<branch-name>/` (or deleted) before marking ready.
+1. **Stray planning docs** — any of `findings.md`, `progress.md`, `task_plan.md` at repo root, OR any `*.md` under `docs/superpowers/specs/`. Per the `Document Conventions` section of `CLAUDE.md`, these are session-ephemeral and must be archived to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` (or deleted) before marking ready.
 2. **Unpushed commits** — `git rev-list --count @{u}..HEAD` > 0. The remote-side PR can't reflect what isn't pushed yet, so marking ready would misrepresent the diff. If the branch has no tracking upstream (rev-list errors), this check silently skips — brand-new unpushed branches aren't flagged.
 
 Both signals are verifiable from filesystem or git state alone. The hook never inspects PR body text to decide whether to block (no text regex).

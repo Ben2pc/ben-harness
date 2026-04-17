@@ -49,7 +49,7 @@ process.stdin.on("end", () => {
         parts.push(`stray spec docs: [${stray.specs.join(", ")}]`);
       }
       return block(
-        `${parts.join("; ")}. Archive to docs/worklog-<YYYY-MM-DD>-<branch>/ or delete before marking ready.`,
+        `${parts.join("; ")}. Archive to docs/worklog/worklog-<YYYY-MM-DD>-<branch>/ or delete before marking ready.`,
       );
     }
 

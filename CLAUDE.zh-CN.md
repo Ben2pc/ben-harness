@@ -18,7 +18,7 @@
 
 9. 完成编码后：任何"已完成 / 已修复 / 可以提交 / 可以进入评审"的判断前，都先按 `verification-before-completion` 运行并检查完整验证。对涉及 UI 的改动，使用 `playwright-cli` 进行交互验证（像用户一样操作应用），不只是看代码。
 
-10. PR就绪：在验证完成、基准分支确认无误，并且 PR 描述已补全变更范围、验收标准、风险和剩余 TODO 之前，保持 PR 为 Draft。完成这些条件后，将 PR 标记为 Ready for Review。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
+10. PR就绪：在验证完成、基准分支确认无误，并且 PR 描述已补全变更范围、验收标准、风险和剩余 TODO 之前，保持 PR 为 Draft。完成这些条件后，将 PR 标记为 Ready for Review。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
 
 11. PR评审：Draft PR 阶段可以先获取早期反馈。PR 标记为 Ready for Review 后，正式 review 必须通过 `deep-review` skill 发起（`/deep-review` 或"跑一次 deep review"）。该 skill 内置 **Independent Evaluation** 和完整的分派矩阵——必选三维度（正确性、一致性、文档同步），按变更类型条件派出（`logic` → 安全性 + 边界处理，`ui` → 交互体验，`frontend-perf` → 性能，`structure` → 工程结构），以及非微小变更时的通用可维护性。`/review`（插件 slash command）保留作为轻量 fallback。
 
@@ -41,7 +41,7 @@
 
 | 目录 | 用途 | 生命周期 |
 |---|---|---|
-| `docs/worklog-<YYYY-MM-DD>-<branch-name>/` | 已归档的 session-ephemeral planning 产物（`findings.md`、`progress.md`、`task_plan.md`、设计 spec）。在 step 10 PR ready 时归档。 | PR merge 后永久保留 |
+| `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | 已归档的 session-ephemeral planning 产物（`findings.md`、`progress.md`、`task_plan.md`、设计 spec）。在 step 10 PR ready 时归档。一个 PR 一个子目录，`docs/worklog/` 作为统一父目录，方便集中查阅 | PR merge 后永久保留 |
 | `docs/rules/` | 编码规范、review checklist、命名 / 风格约定 | 长期维护 |
 | `docs/architecture/` | 长期设计文档（模块布局、数据流、组件职责）。由初始的 `auriga-cli-design.md` 起头。 | 长期 |
 | `docs/` 其他 | 按需新增：`runbooks/`（运维流程）、`adr/`（架构决策记录）、`onboarding/` 等。一类文档一个目录，不混放 | 因类而异 |
