@@ -4,7 +4,7 @@
 
 ## What it does
 
-Runs only when the matched tool is `Bash` and its command contains `gh pr ready`. The registry declares `matcher: "Bash"` + `if: "Bash(gh pr ready)"`, so Claude Code ≥ 2026-04 skips the subprocess spawn entirely on non-matching calls. The script also does the substring check internally for compatibility with older runtimes.
+Runs only when the matched tool is `Bash` and its command contains `gh pr ready`. For any other tool / command the hook exits 0 silently.
 
 ### Hard block (exit 2) — structural signals only
 
@@ -20,6 +20,10 @@ Both signals are verifiable from filesystem or git state alone. The hook never i
 When all block checks pass, the hook fetches the real PR body via `gh pr view --json body`, scans for `^##` / `^###` headings, counts `- [ ]` / `- [x]` checkboxes, and injects a snapshot. The Agent sees the snapshot on its next turn and can compare against its own understanding of what the PR should claim.
 
 If gh is missing / unauthenticated / times out, the hook exits 0 silently — no crash, no false block.
+
+## Dispatch
+
+The registry declares `matcher: "Bash"` + `if: "Bash(gh pr ready)"`, so Claude Code ≥ 2026-04 skips the subprocess spawn entirely on non-matching calls. The script also does the substring check internally for compatibility with older runtimes.
 
 ## Design principles
 

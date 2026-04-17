@@ -4,7 +4,7 @@
 
 ## What it does
 
-Runs only when the matched tool is `Bash` and its command contains `gh pr create`. The registry declares `matcher: "Bash"` + `if: "Bash(gh pr create)"`, so Claude Code ≥ 2026-04 skips the subprocess spawn entirely on non-matching calls. The script also does the substring check internally for compatibility with older runtimes.
+Runs only when the matched tool is `Bash` and its command contains `gh pr create`. For any other tool / command the hook exits 0 silently.
 
 On a successful `gh pr create`:
 
@@ -15,6 +15,10 @@ On a successful `gh pr create`:
 5. Returns `hookSpecificOutput.additionalContext` — a compact snapshot the Agent sees on its next turn.
 
 On failure (gh returned non-zero, URL not extractable, gh unavailable / unauthenticated), the hook falls back to a passive nudge — never crashes, never blocks.
+
+## Dispatch
+
+The registry declares `matcher: "Bash"` + `if: "Bash(gh pr create)"`, so Claude Code ≥ 2026-04 skips the subprocess spawn entirely on non-matching calls. The script also does the substring check internally for compatibility with older runtimes.
 
 ## Why PostToolUse (not PreToolUse)
 

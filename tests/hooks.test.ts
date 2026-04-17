@@ -112,6 +112,75 @@ describe("addHookToSettings", () => {
     assert.equal(group?.hooks[0]?.if, undefined);
   });
 
+  test("upgrade path: existing entry with missing matcher + if gets updated", () => {
+    // Simulates a user who installed an older registry version (pre-if)
+    // and re-runs the installer after hooks.json declared matcher + if.
+    // addHookToSettings must update the two fields in place while
+    // leaving the rest of the entry alone.
+    const s1 = addHookToSettings({}, "PreToolUse", "node /x.mjs", "auriga:upgrade").settings;
+    assert.equal(s1.hooks?.PreToolUse?.[0].matcher, undefined);
+    const s2 = addHookToSettings(s1, "PreToolUse", "node /x.mjs", "auriga:upgrade", {
+      matcher: "Bash",
+      ifRule: "Bash(gh pr ready)",
+    });
+    assert.equal(s2.mutated, true);
+    const group = s2.settings.hooks?.PreToolUse?.[0];
+    assert.equal(group?.matcher, "Bash");
+    assert.equal(group?.hooks[0]?.if, "Bash(gh pr ready)");
+  });
+
+  test("upgrade path: matcher / if already match → no-op", () => {
+    const s1 = addHookToSettings({}, "PreToolUse", "node /x.mjs", "auriga:steady", {
+      matcher: "Bash",
+      ifRule: "Bash(gh pr ready)",
+    }).settings;
+    const s2 = addHookToSettings(s1, "PreToolUse", "node /x.mjs", "auriga:steady", {
+      matcher: "Bash",
+      ifRule: "Bash(gh pr ready)",
+    });
+    assert.equal(s2.mutated, false);
+  });
+
+  test("upgrade path: changing only ifRule updates only the action-level if", () => {
+    const s1 = addHookToSettings({}, "PreToolUse", "node /x.mjs", "auriga:partial", {
+      matcher: "Bash",
+    }).settings;
+    const s2 = addHookToSettings(s1, "PreToolUse", "node /x.mjs", "auriga:partial", {
+      matcher: "Bash",
+      ifRule: "Bash(gh pr ready)",
+    });
+    assert.equal(s2.mutated, true);
+    const group = s2.settings.hooks?.PreToolUse?.[0];
+    assert.equal(group?.matcher, "Bash");
+    assert.equal(group?.hooks[0]?.if, "Bash(gh pr ready)");
+  });
+
+  test("defense-in-depth: rejects programmatic ifRule bypassing registry validator", () => {
+    // Direct API caller tries to sneak in a rule with nested parens —
+    // which is blocked at the registry layer by IF_RE. addHookToSettings
+    // re-validates so settings.json can never receive malformed values
+    // through a non-registry code path (future internal caller, library
+    // consumer, etc).
+    assert.throws(
+      () =>
+        addHookToSettings({}, "PreToolUse", "node /x.mjs", "auriga:bad", {
+          matcher: "Bash",
+          ifRule: "Bash(foo(bar))",
+        }),
+      /addHookToSettings: options\.ifRule/,
+    );
+  });
+
+  test("defense-in-depth: rejects programmatic matcher that doesn't match EVENT_NAME_RE", () => {
+    assert.throws(
+      () =>
+        addHookToSettings({}, "PreToolUse", "node /x.mjs", "auriga:bad", {
+          matcher: "Bash; rm -rf /",
+        }),
+      /addHookToSettings: options\.matcher/,
+    );
+  });
+
   test("dedupes by marker across path drift", () => {
     const s1 = addHookToSettings({}, "Notification", "node /old/path.mjs", "auriga:notify").settings;
     const s2 = addHookToSettings(s1, "Notification", "node /completely/different.mjs", "auriga:notify");

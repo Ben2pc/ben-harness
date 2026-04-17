@@ -254,15 +254,20 @@ function validateHookEntry(hook: unknown, idx: number): void {
  * `options.matcher` writes to the container-level `matcher` (tool-name
  * filter); `options.ifRule` writes to the action-level `if` (permission-
  * rule substring filter, Claude Code ≥ 2026-04). Either or both may be
- * absent. Registry callers pass values validated by loadHooksConfig;
- * direct programmatic callers are trusted (the pure-API surface is
- * intentionally not re-validated here).
+ * absent.
  *
- * Known upgrade gap: if an entry with the same marker already exists
- * (even with a different matcher/if), we short-circuit on marker and
- * do NOT mutate the existing group. Users upgrading from a registry
- * version that lacked matcher/if won't pick up the new fields on a
- * plain re-install — fixing that is a separate PR.
+ * Upgrade path: if an entry with our marker already exists but its
+ * matcher / if disagrees with the desired values, we update those two
+ * fields in place (preserving everything else — command, sibling
+ * actions, the user's other groups — untouched). This is the path for
+ * a user who installed an older registry version and re-runs the
+ * installer after hooks.json changed. Pure no-op when the existing
+ * fields already match.
+ *
+ * Inputs are defense-in-depth revalidated here against IF_RE + the
+ * event-name regex even though registry callers already passed
+ * loadHooksConfig, so a direct library caller can't write malformed
+ * values into settings.json by bypassing the registry loader.
  *
  * Throws if `settings.hooks[event]` exists but is not an array — that
  * means the user has hand-edited their settings into a shape we do not
@@ -276,6 +281,21 @@ export function addHookToSettings(
   marker: string,
   options: { matcher?: string; ifRule?: string } = {},
 ): { settings: SettingsFile; mutated: boolean } {
+  // Defense-in-depth: registry callers pre-validate via loadHooksConfig,
+  // but a direct programmatic caller could bypass that. Refuse values
+  // that wouldn't have cleared the registry validator, so settings.json
+  // can never receive a malformed string through this function.
+  if (options.matcher !== undefined && !EVENT_NAME_RE.test(options.matcher)) {
+    throw new Error(
+      `addHookToSettings: options.matcher must match ${EVENT_NAME_RE} (got ${JSON.stringify(options.matcher)})`,
+    );
+  }
+  if (options.ifRule !== undefined && !IF_RE.test(options.ifRule)) {
+    throw new Error(
+      `addHookToSettings: options.ifRule must match ${IF_RE} (got ${JSON.stringify(options.ifRule)})`,
+    );
+  }
+
   const next: SettingsFile = JSON.parse(JSON.stringify(settings ?? {}));
   if (next.hooks !== undefined && (typeof next.hooks !== "object" || Array.isArray(next.hooks))) {
     throw new Error(
@@ -297,8 +317,21 @@ export function addHookToSettings(
     for (const action of group.hooks) {
       if (!action) continue;
       if (action._marker === marker) {
+        // Our entry already exists. Upgrade matcher / if in place if
+        // they drifted from the desired values; leave command + other
+        // fields alone (users may have hand-tweaked; we only own the
+        // two fields registry declares).
+        let drifted = false;
+        if (options.matcher !== undefined && group.matcher !== options.matcher) {
+          group.matcher = options.matcher;
+          drifted = true;
+        }
+        if (options.ifRule !== undefined && action.if !== options.ifRule) {
+          action.if = options.ifRule;
+          drifted = true;
+        }
         next.hooks[event] = list;
-        return { settings: next, mutated: false };
+        return { settings: next, mutated: drifted };
       }
       if (action.type === "command" && action.command === command) {
         // A pre-existing entry (manual or from another tool) already
