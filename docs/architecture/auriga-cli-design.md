@@ -1,5 +1,7 @@
 # auriga-cli Design Spec
 
+> **Historical snapshot — v1.0.0 original design intent.** This document captures the initial product vision from April 2026; the repo has since grown (Recommended Skills, Hooks, upstream skill submodule, workflow-guard hooks, etc.). For the authoritative current state, see `README.md`, `CLAUDE.md`, and `.claude/CLAUDE.md`. Kept here as architectural context for "why the repo is shaped this way".
+
 ## Overview
 
 auriga-cli 是一个公开的 GitHub 仓库，用于将个人的 Claude Code harness engineering（Workflow、Skills、Plugins）模块化共享给团队和社区。

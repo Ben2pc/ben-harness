@@ -35,6 +35,17 @@
 
 跳过 TDD 的唯一例外：纯文档、纯配置、纯 prompt 改动（无代码逻辑变更）。
 
+## 文档规范
+
+仓库文档统一放 `docs/` 下，按用途分目录，让 Agent、`pr-ready-guard` hook、人工 reviewer 对"文档该放哪、从哪找"有一致认知。
+
+| 目录 | 用途 | 生命周期 |
+|---|---|---|
+| `docs/worklog-<YYYY-MM-DD>-<branch-name>/` | 已归档的 session-ephemeral planning 产物（`findings.md`、`progress.md`、`task_plan.md`、设计 spec）。在 step 10 PR ready 时归档。 | PR merge 后永久保留 |
+| `docs/rules/` | 编码规范、review checklist、命名 / 风格约定 | 长期维护 |
+| `docs/architecture/` | 长期设计文档（模块布局、数据流、组件职责）。由初始的 `auriga-cli-design.md` 起头。 | 长期 |
+| `docs/` 其他 | 按需新增：`runbooks/`（运维流程）、`adr/`（架构决策记录）、`onboarding/` 等。一类文档一个目录，不混放 | 因类而异 |
+
 # Harness 原则
 
 - **约束靠机制执行，不靠提示词**：核心架构规则尽量用 linter / CI / 类型系统执行，不依赖 Agent 自觉遵守。

@@ -35,6 +35,17 @@ Skip brainstorming and planning only; branch, Draft PR, TDD, verification, and r
 
 The only exception to skip TDD: pure documentation, pure configuration, or pure prompt changes (no code logic changes).
 
+## Document Conventions
+
+Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `pr-ready-guard` hook, and human reviewers all agree on where to place and find each document category.
+
+| Directory | Purpose | Lifecycle |
+|---|---|---|
+| `docs/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at step 10 when the PR is marked Ready for Review. | Permanent after PR merge |
+| `docs/rules/` | Coding conventions, review checklists, naming / style decisions. | Long-lived, maintained |
+| `docs/architecture/` | Long-lived design docs (module layouts, data flows, component responsibilities). Seeded by the initial `auriga-cli-design.md` spec. | Long-lived |
+| `docs/` (other categories) | Add one directory per new document category on demand: `runbooks/` (ops procedures), `adr/` (architecture decision records), `onboarding/`, etc. One directory per category; don't mix. | Varies |
+
 # Harness Principles
 
 - **Enforce constraints via mechanisms, not prompts**: Core architectural rules should be enforced via linters / CI / type systems, not by relying on Agents to self-police.

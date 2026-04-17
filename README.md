@@ -14,7 +14,7 @@ This repo itself is a fully configured harness project. You can clone it to see 
 | **Skills** | Development process skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright |
 | **Recommended Skills** | Optional utility skills (e.g. `ui-ux-pro-max`) you can add on top of the workflow skills |
 | **Plugins** | Recommended Claude Code plugins — skill-creator, claude-md-management, codex |
-| **Hooks** | Claude Code hooks (currently: `notify` — native macOS notification with brand icon + sound) |
+| **Hooks** | Claude Code hooks: `notify` (macOS notification), `pr-create-guard` (PostToolUse body snapshot after `gh pr create`), `pr-ready-guard` (PreToolUse block on stray planning docs / unpushed commits before `gh pr ready`) |
 
 ## Quick Start
 
@@ -80,6 +80,8 @@ Installs Claude Code hooks into a chosen scope. Each hook is self-contained unde
 | Hook | Description |
 |---|---|
 | notify | Native macOS notification when Claude needs your attention. Shows the brand mark in the small app-icon position, with click-to-activate that brings the originating terminal back to the foreground. Auto-installs `alerter` via Homebrew (`vjeantet/tap/alerter`). Customize sound and icon by editing `.claude/hooks/notify/config.json` and replacing `.claude/hooks/notify/icon.png`. macOS-only at runtime; silent no-op on other platforms. |
+| pr-create-guard | PostToolUse hook for `gh pr create`. Queries the newly-created PR via `gh pr view` and injects a body snapshot (headings found + TODO-checkbox counts) as `additionalContext` for the Agent to self-verify against the step-10 scope / acceptance / risks / TODO contract. Never blocks — PostToolUse runs after the fact. Graceful degradation when gh is unavailable. |
+| pr-ready-guard | PreToolUse hook for `gh pr ready`. Blocks on structural signals only: stray planning docs at `findings.md` / `progress.md` / `task_plan.md` / `docs/superpowers/specs/*.md` (must be archived to `docs/worklog-<date>-<branch>/` per the `Document Conventions` in CLAUDE.md), or unpushed commits on the current branch. No text regex of PR content is ever used as a block signal. On pass, injects a PR body snapshot as `additionalContext`. |
 
 Scope choices:
 

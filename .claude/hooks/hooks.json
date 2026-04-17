@@ -18,6 +18,32 @@
         "Test  → node {hookDir}/test.mjs   (fire a fake Notification end-to-end)",
         "Docs  → {hookDir}/README.md"
       ]
+    },
+    {
+      "name": "pr-create-guard",
+      "description": "Workflow guard: after `gh pr create`, query the new PR and inject a body snapshot (headings + TODO counts) so the Agent can verify scope / acceptance / risks / TODO",
+      "runtimePlatforms": ["darwin", "linux"],
+      "settingsEvents": [{ "event": "PostToolUse", "matcher": "Bash" }],
+      "command": "node \"$HOOK_DIR/index.mjs\"",
+      "files": ["index.mjs", "README.md", "test.mjs"],
+      "marker": "auriga:pr-create-guard",
+      "customizeHints": [
+        "Test  → node {hookDir}/test.mjs   (run smoke cases)",
+        "Docs  → {hookDir}/README.md"
+      ]
+    },
+    {
+      "name": "pr-ready-guard",
+      "description": "Workflow guard: block `gh pr ready` on unpushed commits or stray planning docs; filter-inject PR body snapshot otherwise",
+      "runtimePlatforms": ["darwin", "linux"],
+      "settingsEvents": [{ "event": "PreToolUse", "matcher": "Bash" }],
+      "command": "node \"$HOOK_DIR/index.mjs\"",
+      "files": ["index.mjs", "README.md", "test.mjs"],
+      "marker": "auriga:pr-ready-guard",
+      "customizeHints": [
+        "Test  → node {hookDir}/test.mjs   (run smoke cases)",
+        "Docs  → {hookDir}/README.md"
+      ]
     }
   ]
 }

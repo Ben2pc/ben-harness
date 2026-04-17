@@ -14,7 +14,7 @@
 | **Skills** | 开发流程 skills —— brainstorming、systematic-debugging、TDD、verification、planning、playwright |
 | **Recommended Skills** | 可选的工具类 skills（如 `ui-ux-pro-max`），在 workflow skills 之外按需追加 |
 | **Plugins** | 推荐的 Claude Code 插件 —— skill-creator、claude-md-management、codex |
-| **Hooks** | Claude Code hooks（当前包含 `notify` —— 带品牌图标和提示音的原生 macOS 通知） |
+| **Hooks** | Claude Code hooks：`notify`（macOS 通知）、`pr-create-guard`（`gh pr create` 后注入 PR body 快照的 PostToolUse）、`pr-ready-guard`（`gh pr ready` 前按游离 planning 文档 / 未 push commits 拦截的 PreToolUse） |
 
 ## 快速开始
 
@@ -80,6 +80,8 @@ npx auriga-cli
 | Hook | 说明 |
 |---|---|
 | notify | 当 Claude 需要你关注时弹一条原生 macOS 通知。在通知小图标位显示品牌图，点击通知可把发起 Claude 的终端拉回前台。会自动通过 Homebrew 安装 `alerter`（`vjeantet/tap/alerter`）。改 `.claude/hooks/notify/config.json` 即可换提示音、替换 `.claude/hooks/notify/icon.png` 即可换图标。仅 macOS 运行时生效，其它平台静默 no-op。 |
+| pr-create-guard | `gh pr create` 的 PostToolUse hook。创建成功后通过 `gh pr view` 拉真实 PR body，扫 `^##` / `^###` headings 并统计 `- [ ]` / `- [x]`，通过 `additionalContext` 注入快照让 Agent 对照 step 10 的"范围 / 验收标准 / 风险 / 剩余 TODO"四要素。不 block——PostToolUse 发生在动作之后。gh 不可用时静默降级。 |
+| pr-ready-guard | `gh pr ready` 的 PreToolUse hook。**只按结构信号**拦截：仓库根存在游离 planning 文档（`findings.md` / `progress.md` / `task_plan.md`），或 `docs/superpowers/specs/*.md` 未归档——这些必须按 CLAUDE.md 的"文档规范"迁到 `docs/worklog-<date>-<branch>/`；或者本地有未 push commits。**不做 PR 正文文本 regex 匹配**。放行时注入 PR body 快照。 |
 
 作用域选择：
 
