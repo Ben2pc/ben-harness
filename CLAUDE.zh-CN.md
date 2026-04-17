@@ -1,4 +1,4 @@
-# 通用 Workflow (v1.1.0)
+# 通用 Workflow (v1.2.0)
 
 1. 需求澄清：新需求先用 `brainstorming` 澄清requirement。**requirement聚焦"做什么"和验收标准，不写具体技术路径**，如果是产品功能优先关注"Why"，让实现阶段的 Agent 自行决定怎么做。
 
@@ -12,7 +12,7 @@
 
 6. 编码前准备4：遇到 bug、测试失败或异常行为时，先按 `systematic-debugging` 找根因，再决定修复。
 
-7. TDD：非微小代码改动遵循 `test-driven-development`：先写失败测试，再写最小实现，再回归验证。**每个 task 开始前明确可测试的验收标准**（具体功能点 + 验收条件 + 边界场景），不是最后才检查。对于复杂功能，调用 `test-designer` skill——它内置 **Independent Evaluation**，派遣零上下文的 agent，仅接收需求描述和代码路径（不包含实现方案），以最高推理力度返回可执行的失败测试。
+7. TDD：非微小代码改动遵循 `test-driven-development`：先写失败测试，再写最小实现，再回归验证。**每个 task 开始前明确可测试的验收标准**（具体功能点 + 验收条件 + 边界场景），不是最后才检查。对于复杂功能，调用 `test-designer` skill——它内置 **Independent Evaluation**，派遣零上下文的 agent，仅接收需求描述和代码路径（不包含实现方案），以最高推理力度返回可执行的失败测试。绿灯阶段的实现如果自然跨多个独立文件，调用 `parallel-implementation` skill——它返回分片计划（文件归属、依赖关系、每片的输出格式契约）；根据计划用并行 `Agent` 调用 + `isolation: "worktree"` 派遣。
 
 8. 完成编码后：任何"已完成 / 已修复 / 可以提交 / 可以进入评审"的判断前，都先按 `verification-before-completion` 运行并检查完整验证。对涉及 UI 的改动，使用 `playwright-cli` 进行交互验证（像用户一样操作应用），不只是看代码。
 
@@ -52,24 +52,17 @@
 | 单文件修复，方案明确 | 自己做——不需要 subagent 开销 |
 | 并行只读任务（review、搜索、分析） | 对话内 subagent，无需隔离 |
 | 单个 subagent 写代码 | 对话内 subagent，无需隔离 |
-| 多个 subagent 写代码 | 对话内 subagent + `isolation: "worktree"`，按文件拆分 |
+| 多个 subagent 写代码 | 调用 `parallel-implementation` skill 产出分片计划，再按计划用 `isolation: "worktree"` 派遣 |
 | 需要零上下文污染的全新视角 | 独立 Agent（如第 7 步的测试设计） |
 | 跨模型盲区覆盖 | 独立 Agent（如 GPT review Claude 的代码） |
 | 不确定该用哪种方案 | 用 `AskUserQuestion` 询问，列出选项并给出建议 |
 
 对话内 subagent 共享主 Agent 的工作目录。核心规则：
 
-- **并行写必须隔离**：并行写代码**必须**使用 `isolation: "worktree"`。单个写者无需隔离。
-  - ✅ 3 个 subagent 并行 review 不同维度（只读）——无需隔离
-  - ✅ 2 个 subagent 分别用 worktree 修 `cli.ts` 和 `utils.ts`——不同文件，自动合并
-  - ❌ 2 个 subagent 都用 worktree 改 `utils.ts`——同一文件，会冲突。应分配给同一个 subagent
+- **并行写必须隔离**：并行写代码**必须**使用 `isolation: "worktree"`；单个写者无需隔离。切片决策（怎么切、在哪会撞、什么时候不派）交给 `parallel-implementation` skill——它内置了文件归属、碰撞合并、大小过滤等过去写在这里的规则。
 - **按任务灵活选模型和力度**：根据任务复杂度灵活选择模型（sonnet/opus、gpt-5.4/gpt-5.4-mini）和 effort 级别。
   - ✅ "给 cli.ts 的 `parseArgs()` 加输入校验" → sonnet
   - ✅ "设计插件依赖解析策略" → opus
   - ✅ 涉及大量架构权衡的复杂 review → GPT 5.4 high effort，跨模型盲区覆盖
 - **始终显式指定输出格式**（shape + scope/length）：不给 subagent 定格式契约，它会默认 dump 冗长上下文回来，抵消派遣的 context 收益。规则本身只约束"必须显式"——具体格式按任务选，例如 "summary ≤300 字"、"punch list，每项一行"、"diff + 每处一行理由"、"结构化 JSON `{...}`"、"一段话判断 + 一行依据"。不穷举格式清单，按任务选合适的。
-- **反模式——四种不该派并行 subagent 的场景**：
-  1. **串行依赖任务**——后一步必须拿到前一步完整输出，并行没收益
-  2. **同文件并行写**——必冲突（对应上方"并行写必须隔离"的一体两面）
-  3. **任务过小**——派遣开销 > 节省
-  4. **需要 subagent 之间交换中间状态**——Claude Code 没有 agent-to-agent 通道。判据："任务能否拆成输入独立、输出独立的切片？" 不能就 serialize（A→主 Agent 转发给 B）或合并成单线任务。注意：sequential handoff（A→主→B）不算互通，是正常流水线。
+- **subagent 无法交换中间状态**：Claude Code 没有 agent-to-agent 通道。如果任务需要 subagent 之间在执行途中协调，要么 serialize（A→主 Agent 转发给 B），要么合并成单线任务。注意：sequential handoff（A→主→B）不算互通，是正常流水线。
