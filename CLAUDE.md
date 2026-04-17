@@ -46,15 +46,6 @@ Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `p
 | `docs/architecture/` | Long-lived design docs (module layouts, data flows, component responsibilities). Seeded by the initial `auriga-cli-design.md` spec. | Long-lived |
 | `docs/` (other categories) | Add one directory per new document category on demand: `runbooks/` (ops procedures), `adr/` (architecture decision records), `onboarding/`, etc. One directory per category; don't mix. | Varies |
 
-### Session-ephemeral planning paths (before archival)
-
-Until step 10's archive-or-delete decision, these paths are the **only** legal homes for "still in play" planning artifacts:
-
-- `findings.md`, `progress.md`, `task_plan.md` at **repo root** (produced by `planning-with-files`)
-- `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` (produced by `brainstorming` skill)
-
-Before the PR is marked ready, these must be archived to the worklog path above or deleted — `pr-ready-guard` blocks `gh pr ready` otherwise.
-
 # Harness Principles
 
 - **Enforce constraints via mechanisms, not prompts**: Core architectural rules should be enforced via linters / CI / type systems, not by relying on Agents to self-police.

@@ -46,15 +46,6 @@
 | `docs/architecture/` | 长期设计文档（模块布局、数据流、组件职责）。由初始的 `auriga-cli-design.md` 起头。 | 长期 |
 | `docs/` 其他 | 按需新增：`runbooks/`（运维流程）、`adr/`（架构决策记录）、`onboarding/` 等。一类文档一个目录，不混放 | 因类而异 |
 
-### 归档前的 planning 产物位置
-
-在 step 10 的归档/删除决策之前，"进行中"的 planning 产物**只能**放这些位置：
-
-- 仓库根目录的 `findings.md`、`progress.md`、`task_plan.md`（`planning-with-files` 产出）
-- `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`（`brainstorming` skill 产出）
-
-PR 标记 ready 前，上述位置的非归档产物必须归档到 worklog 路径或删除——否则 `pr-ready-guard` 会拦截 `gh pr ready`。
-
 # Harness 原则
 
 - **约束靠机制执行，不靠提示词**：核心架构规则尽量用 linter / CI / 类型系统执行，不依赖 Agent 自觉遵守。
