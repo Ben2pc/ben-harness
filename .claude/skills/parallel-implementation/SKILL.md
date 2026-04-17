@@ -7,13 +7,13 @@ description: Plan how to slice a non-trivial coding task across parallel subagen
 
 Planner skill — returns a slice plan, does **not** invoke subagents itself. The main Agent keeps execution authority.
 
-Encodes the "how to cut the work" decision so CLAUDE.md can stop re-deriving it from first principles every time.
-
 ## When to Use
 
-- TDD **green phase** of a non-trivial feature whose implementation naturally spans 3+ independent files or modules
+Any time a non-trivial coding task naturally spans 3+ independent files or modules, triggered by:
+
+- TDD **green phase** after a multi-file failing test suite
 - User explicitly asks for "parallel write", "多 agent 并行实现", or "split this across subagents"
-- The main Agent notices 3+ slices of work it could dispatch in parallel and wants to confirm the split is safe
+- The main Agent wants to confirm a split is safe before dispatching
 
 **Don't use for:**
 - Single-file changes → the main Agent writes it
@@ -54,7 +54,7 @@ Be explicit — vague assignments ("slice 2 touches the config layer") breed col
 
 Scan the file-assignment table. For every file that appears in more than one slice:
 
-- If the edits are **append-only and non-overlapping** (e.g., both add different rows to different sections of the same Markdown table) → still merge to one writer; parallel writes race on line numbers
+- If the edits are **append-only and non-overlapping** (e.g., both add different rows to different sections of the same Markdown table) → still merge to one writer; worktree merges of concurrent edits to the same file produce conflicts whenever the hunks touch adjacent lines
 - Otherwise → **merge those slices to one subagent**. Guaranteed.
 
 Example:
@@ -121,24 +121,33 @@ The skill does none of this — it only produced the plan.
 ## Example invocation
 
 ```
-User: Add a new `retry` option to the exec wrapper and update the three
-      callers (cli.ts / hooks.ts / skills.ts) to use it.
+User: Code review surfaced three independent bugs. Fix all three in this PR:
+      (A) cli.ts drops ESC cancellation errors in withEsc();
+      (B) hooks.ts doesn't validate the `_marker` field on settings reads;
+      (C) plugins.ts silently ignores marketplace fetch failures.
+      Each has its own test.
 
 Assistant (runs parallel-implementation):
-  Step 1 (slice-ability): ❌ callers depend on the new signature — serialize
-                          phase 1 (wrapper) then phase 2 (callers)
-  Phase 1: single slice, main Agent writes src/utils.ts (< 30 lines)
-  Phase 2 plan:
+  Step 1 (slice-ability): ✅ three bugs, three files, no cross-cutting
+                          signature changes — fully independent
+  Step 2 (assignments):
+    A → src/cli.ts + tests/cli.test.ts
+    B → src/hooks.ts + tests/hooks.test.ts
+    C → src/plugins.ts + tests/plugins.test.ts
+  Step 3 (collision check): no file appears twice; no merge needed
+  Step 4 (size filter): each slice ~50–100 lines of changes — dispatch
+  Step 5 (output contract): each subagent returns unified diff + a
+                            one-sentence description of the bug it fixes
+  Step 6 (plan):
     | Slice | Writer | Files | Depends on | Output format |
-    | 1 | subagent | src/cli.ts    | phase 1 | diff + rationale |
-    | 2 | subagent | src/hooks.ts  | phase 1 | diff + rationale |
-    | 3 | subagent | src/skills.ts | phase 1 | diff + rationale |
-  Parallelizable: 1, 2, 3 (different files; all depend only on phase 1)
+    | A | subagent (sonnet) | src/cli.ts + tests     | — | diff + rationale |
+    | B | subagent (sonnet) | src/hooks.ts + tests   | — | diff + rationale |
+    | C | subagent (sonnet) | src/plugins.ts + tests | — | diff + rationale |
+  Parallelizable now: A, B, C (no gating)
 
 Main Agent:
-  1. Writes src/utils.ts inline
-  2. Dispatches slices 1/2/3 in parallel, each with isolation: "worktree"
-  3. Merges returned diffs, runs tests
+  1. Dispatches A/B/C in parallel, each with isolation: "worktree"
+  2. Merges returned diffs, runs the full regression suite
 ```
 
 ## Relationship to other skills
