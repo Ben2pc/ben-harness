@@ -18,7 +18,7 @@
 
 9. Post-coding: Before any "done / fixed / ready to commit / ready for review" judgment, run and check full verification per `verification-before-completion`. For UI changes, use `playwright-cli` for interaction verification (operate the app like a user), not just code review.
 
-10. PR Readiness: Keep the PR in Draft until verification is complete, the base branch is confirmed, and the PR description is updated with scope, acceptance criteria, risks, and remaining TODOs. Then mark the PR Ready for Review. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
+10. PR Readiness: Keep the PR in Draft until verification is complete, the base branch is confirmed, and the PR description is updated with scope, acceptance criteria, risks, and remaining TODOs. Then mark the PR Ready for Review. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
 
 11. PR Review: Early feedback may happen on a Draft PR. After the PR is Ready for Review, formal review must use the `deep-review` skill (invoke via `/deep-review` or ask "run a deep review"). The skill encodes **Independent Evaluation** and the full dispatch matrix — required three dimensions (correctness, consistency, documentation sync), conditional dimensions by change-type tag (`logic` → security + edge cases, `ui` → UX, `frontend-perf` → performance, `structure` → engineering structure), and general maintainability for non-trivial changes. `/review` (the plugin slash command) remains as a lightweight fallback.
 
@@ -41,7 +41,7 @@ Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `p
 
 | Directory | Purpose | Lifecycle |
 |---|---|---|
-| `docs/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at step 10 when the PR is marked Ready for Review. | Permanent after PR merge |
+| `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at step 10 when the PR is marked Ready for Review. One subdirectory per PR; `docs/worklog/` is the single parent so listings stay grouped. | Permanent after PR merge |
 | `docs/rules/` | Coding conventions, review checklists, naming / style decisions. | Long-lived, maintained |
 | `docs/architecture/` | Long-lived design docs (module layouts, data flows, component responsibilities). Seeded by the initial `auriga-cli-design.md` spec. | Long-lived |
 | `docs/` (other categories) | Add one directory per new document category on demand: `runbooks/` (ops procedures), `adr/` (architecture decision records), `onboarding/`, etc. One directory per category; don't mix. | Varies |
