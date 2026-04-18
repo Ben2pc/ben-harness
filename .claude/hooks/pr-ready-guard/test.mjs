@@ -80,13 +80,17 @@ const cases = [
     expect: { status: 0, stdoutEq: "" },
   },
   {
-    name: "stray findings.md at repo root blocks",
+    name: "stray findings.md at repo root blocks (B2-only → no promote remediation)",
     setup: () => {
       const dir = makeRepo();
       fs.writeFileSync(path.join(dir, "findings.md"), "# notes\n");
       return { cwd: dir, cmd: "gh pr ready" };
     },
-    expect: { status: 2, stderrIncludes: "stray planning docs" },
+    expect: {
+      status: 2,
+      stderrIncludes: "stray planning docs",
+      stderrNotIncludes: "promote",
+    },
   },
   {
     name: "stray progress.md + task_plan.md block (names reported)",
@@ -99,7 +103,7 @@ const cases = [
     expect: { status: 2, stderrIncludes: "progress.md" },
   },
   {
-    name: "stray spec under docs/superpowers/specs/*.md blocks",
+    name: "stray spec under docs/superpowers/specs/*.md blocks (B3-only → no promote remediation)",
     setup: () => {
       const dir = makeRepo();
       const specDir = path.join(dir, "docs", "superpowers", "specs");
@@ -107,7 +111,11 @@ const cases = [
       fs.writeFileSync(path.join(specDir, "2026-04-17-foo-design.md"), "# spec\n");
       return { cwd: dir, cmd: "gh pr ready" };
     },
-    expect: { status: 2, stderrIncludes: "spec docs" },
+    expect: {
+      status: 2,
+      stderrIncludes: "spec docs",
+      stderrNotIncludes: "promote",
+    },
   },
   {
     name: "active spec left in docs/specs/*.md blocks (B4)",

@@ -62,9 +62,14 @@ process.stdin.on("end", () => {
           `unfinalized active specs in docs/specs/: [${stray.activeSpecs.join(", ")}]`,
         );
       }
-      return block(
-        `${parts.join("; ")}. Resolve before marking ready: promote to docs/architecture/, archive to docs/worklog/worklog-<YYYY-MM-DD>-<branch>/, or delete.`,
-      );
+      // Only B4 (active specs) is "promote-able" to docs/architecture/.
+      // B2/B3 are session-ephemeral by definition — don't suggest
+      // promotion when only those fire.
+      const remediation =
+        stray.activeSpecs.length > 0
+          ? "Resolve before marking ready: promote to docs/architecture/, archive to docs/worklog/worklog-<YYYY-MM-DD>-<branch>/, or delete."
+          : "Archive to docs/worklog/worklog-<YYYY-MM-DD>-<branch>/ or delete before marking ready.";
+      return block(`${parts.join("; ")}. ${remediation}`);
     }
 
     // B1: unpushed commits on current branch. Only meaningful when the

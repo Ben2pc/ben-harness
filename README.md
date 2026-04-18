@@ -14,7 +14,7 @@ This repo itself is a fully configured harness project. You can clone it to see 
 | **Skills** | Development process skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright |
 | **Recommended Skills** | Optional utility skills (e.g. `ui-ux-pro-max`) you can add on top of the workflow skills |
 | **Plugins** | Recommended Claude Code plugins — skill-creator, claude-md-management, codex |
-| **Hooks** | Claude Code hooks: `notify` (macOS notification), `pr-create-guard` (PostToolUse body snapshot after `gh pr create`), `pr-ready-guard` (PreToolUse block on stray planning docs / unpushed commits before `gh pr ready`) |
+| **Hooks** | Claude Code hooks: `notify` (macOS notification, focus-aware sound-only when terminal is frontmost), `pr-create-guard` (PostToolUse body snapshot after `gh pr create`), `pr-ready-guard` (PreToolUse block on stray planning docs / active specs in `docs/specs/` / unpushed commits before `gh pr ready`) |
 
 ## Quick Start
 
@@ -79,9 +79,9 @@ Installs Claude Code hooks into a chosen scope. Each hook is self-contained unde
 
 | Hook | Description |
 |---|---|
-| notify | Native macOS notification when Claude needs your attention. Shows the brand mark in the small app-icon position, with click-to-activate that brings the originating terminal back to the foreground. Auto-installs `alerter` via Homebrew (`vjeantet/tap/alerter`). Customize sound and icon by editing `.claude/hooks/notify/config.json` and replacing `.claude/hooks/notify/icon.png`. macOS-only at runtime; silent no-op on other platforms. |
+| notify | Native macOS notification when Claude needs your attention. Shows the brand mark in the small app-icon position; click brings the originating terminal back to focus. **Focus-aware**: when the launching terminal is already frontmost, drops the banner and plays the sound only (toggle via `soundOnlyWhenFocused` in `config.json`). **Per-project group ID**: new notifications cleanly replace older ones in Notification Center, no process accumulation, no cross-project interference. Auto-installs `alerter` via Homebrew (`vjeantet/tap/alerter`). Customize sound and icon by editing `.claude/hooks/notify/config.json` and `.claude/hooks/notify/icon.png`. macOS-only at runtime; silent no-op on other platforms. |
 | pr-create-guard | PostToolUse hook for `gh pr create`. Queries the newly-created PR via `gh pr view` and injects a body snapshot (headings found + TODO-checkbox counts) as `additionalContext` for the Agent to self-verify against the step-10 scope / acceptance / risks / TODO contract. Never blocks — PostToolUse runs after the fact. Graceful degradation when gh is unavailable. |
-| pr-ready-guard | PreToolUse hook for `gh pr ready`. Blocks on structural signals only: stray planning docs at `findings.md` / `progress.md` / `task_plan.md` / `docs/superpowers/specs/*.md` (must be archived to `docs/worklog/worklog-<date>-<branch>/` per the `Document Conventions` in CLAUDE.md), or unpushed commits on the current branch. No text regex of PR content is ever used as a block signal. On pass, injects a PR body snapshot as `additionalContext`. |
+| pr-ready-guard | PreToolUse hook for `gh pr ready`. Blocks on structural signals only: (1) stray planning docs at `findings.md` / `progress.md` / `task_plan.md` / `docs/superpowers/specs/*.md` — must be archived to `docs/worklog/worklog-<date>-<branch>/` (or deleted) per CLAUDE.md `Document Conventions`; (2) unfinalized active specs at `docs/specs/*.md` — must be promoted to `docs/architecture/`, archived, or deleted; (3) unpushed commits on the current branch. No text regex of PR content is ever used as a block signal. On pass, injects a PR body snapshot as `additionalContext`. |
 
 Scope choices:
 

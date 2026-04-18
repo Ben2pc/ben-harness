@@ -34,7 +34,7 @@
     },
     {
       "name": "pr-ready-guard",
-      "description": "Workflow guard: block `gh pr ready` on unpushed commits or stray planning docs; filter-inject PR body snapshot otherwise",
+      "description": "Workflow guard: block `gh pr ready` on unpushed commits, stray planning docs, or unfinalized active specs in docs/specs/; filter-inject PR body snapshot otherwise",
       "runtimePlatforms": ["darwin", "linux"],
       "settingsEvents": [{ "event": "PreToolUse", "matcher": "Bash", "if": "Bash(gh pr ready)" }],
       "command": "node \"$HOOK_DIR/index.mjs\"",
