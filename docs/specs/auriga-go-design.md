@@ -1,6 +1,6 @@
 # auriga-go — Workflow Autopilot Skill (Design)
 
-**Status**: DRAFT · brainstorming in progress · 2026-04-18
+**Status**: DRAFT · brainstorming complete · 2026-04-18
 **Branch**: `feat/auriga-go-skill`
 **Workflow version anchor**: General Workflow v1.3.0 (`CLAUDE.md`)
 
@@ -66,24 +66,27 @@ When `mode=ship` reaches a CLAUDE.md decision point that would normally trigger 
 | Step 11 — review | `/review` (light) or `deep-review` | **`deep-review` mandatory**; ship runs it on the **Draft** before flipping Ready (deliberate exception to the "deep-review only after Ready" rule, justified because ship is producing the Ready candidate) |
 | Flipping Draft → Ready | manual | ship flips automatically once the loop exit condition is met |
 
-## Open questions (to resolve in next session)
+## Resolved clarifications
 
-- **§2 Mode semantics** — precise loop contract for all three modes (`step` / `auto` / `ship`); per-iteration "next-step intent" echo for visibility; per-mode `max-iter` budget defaults; ship mode's fix-loop sub-state machine on test/verification failure; ship's terminal-state check (`tests pass ∧ verification clean ∧ deep-review punch list empty`).
-- **§3 Hard-stop whitelist** — enumerate concrete commands / patterns that trigger auto→stop (destructive git, main-branch writes, `rm -rf`, `npm publish`, `gh release create`, CI/CD file mutations, etc.).
-- **§4 State detection signals** — the exact git / filesystem / GitHub / test signals probed in fallback path D, and how they map to the 12-step workflow position.
-- **§5 SKILL.md content structure** — the instruction block the Agent follows when the skill is invoked (algorithm, echo contract, stop contract, confirmation contract).
-- **§6 Installer integration** — confirm the simplified path (single `WORKFLOW_SKILLS += "auriga-go"` + `skills-lock.json` entry, no new code path); spec the dev-iteration loop (push-resync vs. direct `.agents/` edits with back-port discipline); confirm scope selection (project vs. global) works unchanged.
-- **§7 CLAUDE.md workflow integration** — which step(s) reference `auriga-go` explicitly; dual-language update (`CLAUDE.md` + `CLAUDE.zh-CN.md`).
-- **§8 README docs, final acceptance criteria, and test plan** — README skills-table entry (both languages); acceptance checklist; smoke / unit / integration test matrix.
+| Area | Decision |
+|---|---|
+| Invocation | `/auriga-go` slash command **OR** natural-language trigger (e.g., "按照工作流继续", "continue the workflow"). Both paths enter the same skill. |
+| Relationship with other workflow skills | **Reminder-based, not orchestrating.** auriga-go inspects state and tells the main Agent which skill to invoke next (`brainstorming`, `planning-with-files`, `test-designer`, `deep-review`, etc.); it never dispatches those skills itself. Keeps the skill thin and lets the main Agent own tool choice. |
+| CLAUDE.md integration | **Independent meta-tool** — not embedded in any of the 12 steps. Referenced from the workflow as a compass/autopilot available at any point, not as a numbered step. |
+| Hard-stop enumeration | **No explicit whitelist.** The two contract classes (ambiguity / destructive-or-irreversible) stay as-is; rely on the model to recognize concrete commands in context. Rationale: destructive operations (force-push to shared refs, `npm publish`, broad `rm -rf`, CI/CD file mutations) are low-frequency and context-sensitive — an enumeration would both miss cases and add maintenance drag. |
+| Fallback D state signals | **No fixed signal → workflow-step mapping table.** SKILL.md describes the fallback *intent* (probe git / filesystem / GitHub state → present findings → confirm with user → write todos → proceed); the model derives the concrete signals per situation. Modern models are sufficient for this heuristic. |
+| Intent echo | **Mandatory, one-line format** at the start of every iteration (all three modes): `[auriga-go iter N/M] 现状：<current state> → 下一步：<next action>`. Enables the user to interrupt before a wrong step runs and gives a recoverable audit trail. |
+| Fix-loop budgeting (ship) | Fix-loop iterations count against the top-level `max-iter` — single shared budget, no nested counter. |
+| Acceptance criteria | `deep-review` passes on the PR + human-partner dogfooding. No pre-specified smoke/integration test matrix — real usage is the test. |
 
 ## Risks (preliminary)
 
-- **Autonomy tension** with CLAUDE.md's "Automation ladder — start low" principle. Mitigations planned: hard-stop whitelist, per-iteration intent echo, loop-budget cap, `mode=step` escape hatch.
+- **Autonomy tension** with CLAUDE.md's "Automation ladder — start low" principle. Mitigations: two-class hard-stop contract (ambiguity / destructive), per-iteration intent echo, loop-budget cap, `mode=step` escape hatch.
 - **State-detection misreads** in fallback path D — a wrong inference could push the Agent toward the wrong next action. Mitigation: fallback-path results must be confirmed with the user before todos are written.
-- **Loop runaway** in `mode=auto` without an iteration cap. Mitigation: enforce a max-iterations budget in §2.
+- **Loop runaway** in `mode=auto` / `mode=ship` without an iteration cap. Mitigation: per-mode `max-iter` budget defined in the mode comparison table (auto ~10, ship ~30); fix-loop iterations count against the same budget.
 - **Version skew** with CLAUDE.md workflow — if the 12-step workflow evolves, `auriga-go`'s encoded view drifts. Mitigation: pin the workflow version in SKILL.md; treat workflow rewrites as a trigger to bump the skill.
 - **Ship mode produces a flawed Ready PR** — high-autonomy mode can ship code with subtle issues that no human caught mid-flight. Mitigations: (i) strictest defaults at every decision point (see "Ship-mode strict defaults"); (ii) in-Draft `deep-review` self-pass before flipping Ready; (iii) `max-iter` cap with a clear "blocked, here's why" PR comment on budget exhaustion (no silent give-up); (iv) `Experimental` tag both in SKILL.md header and as a one-line runtime warning when invoked, so users explicitly opt in; (v) per-iteration intent echo so the audit trail is recoverable post-hoc.
 
-## Next session
+## Next
 
-Resume brainstorming at §2 (mode semantics and hard-stop whitelist detail). After §2–§8 are closed, finalize this spec, then follow workflow step 2 to choose a planning method (built-in Plan or `planning-with-files`) before starting TDD implementation.
+Requirement clarification is complete. Move to workflow step 2: use `AskUserQuestion` to choose a planning method (built-in Plan / `planning-with-files`) before starting TDD implementation. Before flipping the PR Draft → Ready, resolve this spec per CLAUDE.md Document Conventions — promote to `docs/architecture/auriga-go.md` (long-lived reference), archive to `docs/worklog/worklog-<YYYY-MM-DD>-<branch>/`, or delete. `pr-ready-guard` B4 will block otherwise.
