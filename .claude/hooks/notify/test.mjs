@@ -27,8 +27,13 @@ const payload = JSON.stringify({
   notification_type: "manual_test",
 });
 
+// AURIGA_NOTIFY_FORCE=1 bypasses the focus check so the banner shows
+// even if you're staring at the terminal you ran the test from. Without
+// it, a focused terminal would only get the sound — which can read as
+// "the test failed" when it's actually working as designed.
 const child = spawn("node", [ENTRY], {
   stdio: ["pipe", "inherit", "inherit"],
+  env: { ...process.env, AURIGA_NOTIFY_FORCE: "1" },
 });
 child.stdin.write(payload);
 child.stdin.end();

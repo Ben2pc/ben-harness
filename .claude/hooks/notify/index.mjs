@@ -9,7 +9,13 @@ if (process.platform !== "darwin") process.exit(0);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SELF = fileURLToPath(import.meta.url);
 
-const DEFAULTS = { icon: "./icon.png", sound: "Submarine", sender: null, activate: undefined };
+const DEFAULTS = {
+  icon: "./icon.png",
+  sound: "Submarine",
+  sender: null,
+  activate: undefined,
+  soundOnlyWhenFocused: true,
+};
 
 // alerter's `--sender` re-routes the notification through a specific
 // app's bundle ID, which determines what notification permission and
@@ -39,6 +45,15 @@ function loadConfig() {
         parsed.activate === false || typeof parsed.activate === "string"
           ? parsed.activate
           : DEFAULTS.activate,
+      // `soundOnlyWhenFocused` downgrades to sound-only (no banner)
+      // when the terminal that launched Claude is currently the
+      // frontmost app — you're already looking at it, the banner is
+      // visual noise. Default true. Set false to always show the
+      // full banner regardless of focus.
+      soundOnlyWhenFocused:
+        typeof parsed.soundOnlyWhenFocused === "boolean"
+          ? parsed.soundOnlyWhenFocused
+          : DEFAULTS.soundOnlyWhenFocused,
     };
   } catch {
     return { ...DEFAULTS };
@@ -52,10 +67,77 @@ function loadConfig() {
 // a no-op (banner + sound still fire), so this is safe to enable by
 // default. Users on weird launch chains (ssh, launchd, cron) can pin
 // `activate` in config.json or set it to `false` to opt out.
-function resolveActivate(cfg) {
+function getSourceBundleId() {
+  return process.env.__CFBundleIdentifier ?? null;
+}
+
+function resolveActivate(cfg, sourceBundle) {
   if (cfg.activate === false) return null;
   if (typeof cfg.activate === "string" && cfg.activate.length > 0) return cfg.activate;
-  return process.env.__CFBundleIdentifier ?? null;
+  return sourceBundle;
+}
+
+// Returns the bundle ID of the currently frontmost macOS app, or null
+// if osascript fails / times out / the user has denied "System Events"
+// automation permission. We wrap the AppleScript in try/error so a
+// permission denial returns "" instead of an exit-2 — failing open
+// (caller treats null as "can't tell, just notify").
+function getFrontmostBundleId() {
+  const r = spawnSync(
+    "osascript",
+    [
+      "-e", "try",
+      "-e", "tell application \"System Events\" to bundle identifier of first application process whose frontmost is true",
+      "-e", "on error",
+      "-e", "\"\"",
+      "-e", "end try",
+    ],
+    { encoding: "utf8", timeout: 1500 },
+  );
+  if (r.status !== 0) return null;
+  const out = (r.stdout ?? "").trim();
+  return out.length > 0 ? out : null;
+}
+
+// "Is the terminal that launched Claude currently the user's frontmost
+// app?" Both inputs are bundle IDs (com.googlecode.iterm2,
+// com.apple.Terminal, com.microsoft.VSCode, ...). Return false on any
+// uncertainty so callers default to the louder behavior.
+function isSourceFocused(sourceBundle) {
+  if (!sourceBundle) return false;
+  const front = getFrontmostBundleId();
+  if (!front) return false;
+  return front === sourceBundle;
+}
+
+// Play the configured sound without a banner. Searches user-installed
+// sounds first (~/Library/Sounds), then falls back to the macOS system
+// sound bank. Spawns afplay detached so we don't block the hook return.
+// On miss (custom sound name with no matching file), no-op.
+function playSoundOnly(soundName) {
+  if (!soundName) return false;
+  const home = process.env.HOME ?? "";
+  const candidates = [];
+  if (home) {
+    candidates.push(path.join(home, "Library", "Sounds", `${soundName}.aiff`));
+    candidates.push(path.join(home, "Library", "Sounds", `${soundName}.caf`));
+  }
+  candidates.push(`/System/Library/Sounds/${soundName}.aiff`);
+  for (const candidate of candidates) {
+    try {
+      if (fs.statSync(candidate).isFile()) {
+        const child = spawn("afplay", [candidate], {
+          detached: true,
+          stdio: "ignore",
+        });
+        child.unref();
+        return true;
+      }
+    } catch {
+      // not found; try next candidate
+    }
+  }
+  return false;
 }
 
 function resolveIcon(iconPath) {
@@ -109,7 +191,19 @@ process.stdin.on("end", () => {
     const title = String(data.title || "Claude Code");
     const message = String(data.message || "");
     const subtitle = data.notification_type ? String(data.notification_type) : "";
-    const activate = resolveActivate(cfg);
+    const sourceBundle = getSourceBundleId();
+    const activate = resolveActivate(cfg, sourceBundle);
+
+    // Focus-aware downgrade: when the launching terminal is the
+    // frontmost app, the user is already looking at the conversation —
+    // a banner is just visual noise. Drop to sound-only via afplay.
+    // AURIGA_NOTIFY_FORCE=1 (set by test.mjs) bypasses this so manual
+    // smoke tests always show the full banner.
+    const forceFull = process.env.AURIGA_NOTIFY_FORCE === "1";
+    if (cfg.soundOnlyWhenFocused && !forceFull && isSourceFocused(sourceBundle)) {
+      playSoundOnly(cfg.sound);
+      return;
+    }
 
     // Backend preference: alerter > osascript.
     //

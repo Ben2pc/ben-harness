@@ -42,6 +42,15 @@ Edit `config.json` next to this README:
   force a specific app (e.g. `"com.microsoft.VSCode"` to always jump to
   VS Code), or to `false` to opt out entirely (banner is purely
   informational, click does nothing).
+- **`soundOnlyWhenFocused`** *(default `true`)* — when the terminal
+  that launched Claude is the frontmost app at notification time, drop
+  the banner and play only the sound. Rationale: you're already looking
+  at the conversation, the banner is visual noise but a chime still
+  pulls your ear back. Set `false` to always show the full banner
+  regardless of focus. Detection uses `osascript` against `System
+  Events`, which may trigger a one-time macOS Automation permission
+  prompt on first run — denying it is safe (the hook treats permission
+  failure as "can't tell" and shows the full banner).
 
 The hook is macOS-only at runtime. On other platforms it exits silently
 without doing anything, so it's safe to commit into a repo shared with a
@@ -68,8 +77,16 @@ notification permission for your terminal app being set to "None" in
 
 ## How it works
 
-`index.mjs` reads the `Notification` event payload from stdin and picks
-the first available notification backend:
+`index.mjs` reads the `Notification` event payload from stdin, then
+decides between three paths:
+
+- **Sound only** — when `soundOnlyWhenFocused` is on AND the launching
+  terminal's bundle ID matches the frontmost app's bundle ID. Plays the
+  configured sound via `afplay` (looking under `~/Library/Sounds/` then
+  `/System/Library/Sounds/`). Returns immediately.
+- **Full banner + sound** — every other case (terminal not focused,
+  focus check disabled in config, focus undetectable, `AURIGA_NOTIFY_FORCE=1`).
+  Picks the first available notification backend:
 
 1. **`alerter`** *(preferred)* — Swift-based notification CLI with
    `--app-icon` for the small top-left icon next to the title. The
