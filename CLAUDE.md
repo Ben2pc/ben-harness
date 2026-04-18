@@ -43,7 +43,8 @@ Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `p
 |---|---|---|
 | `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at step 10 when the PR is marked Ready for Review. One subdirectory per PR; `docs/worklog/` is the single parent so listings stay grouped. | Permanent after PR merge |
 | `docs/rules/` | Coding conventions, review checklists, naming / style decisions. | Long-lived, maintained |
-| `docs/architecture/` | Long-lived design docs (module layouts, data flows, component responsibilities). Seeded by the initial `auriga-cli-design.md` spec. | Long-lived |
+| `docs/specs/` | **Default destination for `brainstorming` outputs.** Temporary working area for active specs / requirement clarifications during development. **Must be empty by PR Ready** — promote each spec to `docs/architecture/` (long-lived reference), archive to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` (historical trace), or delete. Enforced by `pr-ready-guard`. | Ephemeral during dev |
+| `docs/architecture/` | Stable, long-lived design docs (module layouts, data flows, component responsibilities). New entries usually arrive by promotion from `docs/specs/`. | Long-lived |
 | `docs/` (other categories) | Add one directory per new document category on demand: `runbooks/` (ops procedures), `adr/` (architecture decision records), `onboarding/`, etc. One directory per category; don't mix. | Varies |
 
 # Harness Principles

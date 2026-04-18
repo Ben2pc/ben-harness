@@ -43,7 +43,8 @@
 |---|---|---|
 | `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | 已归档的 session-ephemeral planning 产物（`findings.md`、`progress.md`、`task_plan.md`、设计 spec）。在 step 10 PR ready 时归档。一个 PR 一个子目录，`docs/worklog/` 作为统一父目录，方便集中查阅 | PR merge 后永久保留 |
 | `docs/rules/` | 编码规范、review checklist、命名 / 风格约定 | 长期维护 |
-| `docs/architecture/` | 长期设计文档（模块布局、数据流、组件职责）。由初始的 `auriga-cli-design.md` 起头。 | 长期 |
+| `docs/specs/` | **`brainstorming` 输出的默认归宿。** 开发期间存放活跃 spec / 需求澄清的临时工作区。**PR Ready 前必须清空**——每个 spec 晋升到 `docs/architecture/`（长期参考）、归档到 `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/`（历史轨迹），或删除。由 `pr-ready-guard` 强制 | 开发期临时 |
+| `docs/architecture/` | 稳定、长期的设计文档（模块布局、数据流、组件职责）。新条目通常由 `docs/specs/` 晋升而来 | 长期 |
 | `docs/` 其他 | 按需新增：`runbooks/`（运维流程）、`adr/`（架构决策记录）、`onboarding/` 等。一类文档一个目录，不混放 | 因类而异 |
 
 # Harness 原则
