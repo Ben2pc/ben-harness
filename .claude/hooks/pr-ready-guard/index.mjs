@@ -5,6 +5,10 @@
 //   B1  unpushed commits on the current branch
 //   B2  stray planning docs at repo root (findings/progress/task_plan)
 //   B3  stray spec docs under docs/superpowers/specs/
+//   B4  active specs left under docs/specs/ — that directory is a
+//       dev-only temporary workspace and must be empty by PR Ready
+//       (promote to docs/architecture/, archive to docs/worklog/, or
+//       delete; per CLAUDE.md Document Conventions)
 //
 // Everything else is filter-only: we fetch the real PR body (best-effort
 // via gh pr view), list ^## / ^### headings, count TODO checkboxes, and
@@ -32,13 +36,18 @@ process.stdin.on("end", () => {
     // Block checks run in a fixed order so the reason the Agent sees
     // is the first unambiguous structural problem, not a grab-bag.
 
-    // B2/B3: stray planning artifacts (repo-root files + spec glob).
-    // Anchor at the git toplevel, not process.cwd — hooks fire from
-    // whatever subdir the Agent was in when it ran the command, and
-    // we want the stray check to apply to the whole repo.
+    // B2/B3/B4: stray planning artifacts (repo-root files + spec glob +
+    // unfinalized active specs). Anchor at the git toplevel, not
+    // process.cwd — hooks fire from whatever subdir the Agent was in
+    // when it ran the command, and we want the stray check to apply to
+    // the whole repo.
     const repoRoot = gitToplevel() ?? process.cwd();
     const stray = findStrayDocs(repoRoot);
-    if (stray.root.length > 0 || stray.specs.length > 0) {
+    if (
+      stray.root.length > 0 ||
+      stray.specs.length > 0 ||
+      stray.activeSpecs.length > 0
+    ) {
       const parts = [];
       if (stray.root.length > 0) {
         parts.push(
@@ -48,8 +57,13 @@ process.stdin.on("end", () => {
       if (stray.specs.length > 0) {
         parts.push(`stray spec docs: [${stray.specs.join(", ")}]`);
       }
+      if (stray.activeSpecs.length > 0) {
+        parts.push(
+          `unfinalized active specs in docs/specs/: [${stray.activeSpecs.join(", ")}]`,
+        );
+      }
       return block(
-        `${parts.join("; ")}. Archive to docs/worklog/worklog-<YYYY-MM-DD>-<branch>/ or delete before marking ready.`,
+        `${parts.join("; ")}. Resolve before marking ready: promote to docs/architecture/, archive to docs/worklog/worklog-<YYYY-MM-DD>-<branch>/, or delete.`,
       );
     }
 
@@ -105,7 +119,23 @@ function findStrayDocs(repoRoot) {
   } catch {
     // dir doesn't exist — no spec docs. Not stray.
   }
-  return { root, specs };
+
+  // B4: docs/specs/ is dev-only temp workspace; non-empty *.md at PR
+  // Ready means a spec was never promoted / archived / deleted. Apply
+  // the same .md-without-.bak filter as B3 so partial drafts don't
+  // false-positive after a rename.
+  const activeSpecsDir = path.join(repoRoot, "docs", "specs");
+  let activeSpecs = [];
+  try {
+    const entries = fs.readdirSync(activeSpecsDir);
+    activeSpecs = entries
+      .filter((e) => /\.md$/i.test(e))
+      .filter((e) => !/\.bak$/i.test(e))
+      .map((e) => `docs/specs/${e}`);
+  } catch {
+    // dir doesn't exist — no active specs. Not stray.
+  }
+  return { root, specs, activeSpecs };
 }
 
 function gitToplevel() {

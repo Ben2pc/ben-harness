@@ -11,7 +11,8 @@ Runs only when the matched tool is `Bash` and its command contains `gh pr ready`
 Checks run in fixed order; the first to fire is the reason the Agent sees:
 
 1. **Stray planning docs** — any of `findings.md`, `progress.md`, `task_plan.md` at repo root, OR any `*.md` under `docs/superpowers/specs/`. Per the `Document Conventions` section of `CLAUDE.md`, these are session-ephemeral and must be archived to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` (or deleted) before marking ready.
-2. **Unpushed commits** — `git rev-list --count @{u}..HEAD` > 0. The remote-side PR can't reflect what isn't pushed yet, so marking ready would misrepresent the diff. If the branch has no tracking upstream (rev-list errors), this check silently skips — brand-new unpushed branches aren't flagged.
+2. **Unfinalized active specs** — any `*.md` under `docs/specs/`. That directory is the dev-only temporary workspace for `brainstorming` outputs; by PR Ready every spec must be either promoted to `docs/architecture/` (long-lived design reference), archived to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` (historical trace), or deleted. The convention is canonical in the CLAUDE.md `Document Conventions` table.
+3. **Unpushed commits** — `git rev-list --count @{u}..HEAD` > 0. The remote-side PR can't reflect what isn't pushed yet, so marking ready would misrepresent the diff. If the branch has no tracking upstream (rev-list errors), this check silently skips — brand-new unpushed branches aren't flagged.
 
 Both signals are verifiable from filesystem or git state alone. The hook never inspects PR body text to decide whether to block (no text regex).
 
@@ -37,7 +38,7 @@ The registry declares `matcher: "Bash"` + `if: "Bash(gh pr ready)"`, so Claude C
 node .claude/hooks/pr-ready-guard/test.mjs
 ```
 
-Covers 7 smoke cases: pass-through for non-matching commands, stray-doc blocks for each path (root files + spec glob), archived-worklog copies correctly excluded, and clean-repo pass-through. The live gh-fetch happy path is exercised end-to-end by the worktree-isolated verification agent before the PR is marked ready.
+Covers 15 smoke cases: pass-through for non-matching commands, stray-doc blocks for each path (root files + `docs/superpowers/specs/` + active specs in `docs/specs/`), the B4 message's promote/archive/delete remediation, empty-`docs/specs/` and non-md-file negative cases, archived-worklog copies correctly excluded, and clean-repo pass-through. The live gh-fetch happy path is exercised end-to-end by the worktree-isolated verification agent before the PR is marked ready.
 
 ## Limits
 

@@ -110,6 +110,50 @@ const cases = [
     expect: { status: 2, stderrIncludes: "spec docs" },
   },
   {
+    name: "active spec left in docs/specs/*.md blocks (B4)",
+    setup: () => {
+      const dir = makeRepo();
+      const activeDir = path.join(dir, "docs", "specs");
+      fs.mkdirSync(activeDir, { recursive: true });
+      fs.writeFileSync(path.join(activeDir, "auriga-go-design.md"), "# active spec\n");
+      return { cwd: dir, cmd: "gh pr ready" };
+    },
+    expect: { status: 2, stderrIncludes: "unfinalized active specs in docs/specs/" },
+  },
+  {
+    name: "B4 message lists promote/archive/delete remediation",
+    setup: () => {
+      const dir = makeRepo();
+      const activeDir = path.join(dir, "docs", "specs");
+      fs.mkdirSync(activeDir, { recursive: true });
+      fs.writeFileSync(path.join(activeDir, "feature-x-design.md"), "# spec\n");
+      return { cwd: dir, cmd: "gh pr ready" };
+    },
+    expect: { status: 2, stderrIncludes: "promote to docs/architecture/" },
+  },
+  {
+    name: "empty docs/specs/ does NOT block (B4 negative)",
+    setup: () => {
+      const dir = makeRepo();
+      fs.mkdirSync(path.join(dir, "docs", "specs"), { recursive: true });
+      // No .md files inside — directory exists but empty.
+      return { cwd: dir, cmd: "gh pr ready" };
+    },
+    expect: { status: 0, stderrNotIncludes: "active specs" },
+  },
+  {
+    name: "non-md files in docs/specs/ don't trigger B4",
+    setup: () => {
+      const dir = makeRepo();
+      const activeDir = path.join(dir, "docs", "specs");
+      fs.mkdirSync(activeDir, { recursive: true });
+      fs.writeFileSync(path.join(activeDir, ".gitkeep"), "");
+      fs.writeFileSync(path.join(activeDir, "draft.md.bak"), "old\n");
+      return { cwd: dir, cmd: "gh pr ready" };
+    },
+    expect: { status: 0, stderrNotIncludes: "active specs" },
+  },
+  {
     name: "archived worklog copy does NOT count as stray",
     setup: () => {
       const dir = makeRepo();
