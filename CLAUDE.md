@@ -49,7 +49,7 @@ Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `p
 
 ## Workflow Autopilot (auriga-go)
 
-For workflow navigation — resuming after `/clear`, correcting drift, or driving forward across multiple steps — invoke `/auriga-go` (or say "按照工作流继续" / "drive the workflow forward"). It inspects state, identifies the next step, echoes intent, then proceeds (`auto` mode, default) or proposes one step (`step`). Reminder-based — it tells the main Agent which skill to invoke next; it does not dispatch skills itself. Stops only at hard ambiguity or destructive operations. Plain "继续" / "next" does **not** trigger it (those refer to the current task).
+For workflow navigation — resuming after `/clear`, correcting drift, or driving forward across multiple steps — invoke `/auriga-go` (or say "按照工作流继续" / "drive the workflow forward"). It inspects state, identifies the next step, records it in the main Agent's native task tracker, then proceeds (`auto` mode, default) or proposes one step (`step`). Reminder-based — it tells the main Agent which skill to invoke next; it does not dispatch skills itself. Stops only at hard ambiguity or destructive operations. Plain "继续" / "next" does **not** trigger it (those refer to the current task).
 
 Experimental `ship` mode drives a small-scope spec → PR Ready autonomously (strictest defaults + hook-enforced iteration budget). See `skills/auriga-go/references/ship.md`.
 

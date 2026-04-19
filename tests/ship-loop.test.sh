@@ -164,10 +164,35 @@ else
   finish_ok
 fi
 
-# ---- 5. iteration >= max → forced Blocked exit (state cleared) ----
-start "iter >= max → forced exit, state removed"
+# ---- 5. iter == max, no marker → grace-turn ceremony prompt, state preserved ----
+start "iter == max → grace turn injected, iter bumped to max+1"
 make_state 30 30
-make_transcript "nothing" > /dev/null
+make_transcript "just working, no marker yet" > /dev/null
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ ! -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should still exist (grace turn reuses it)"
+elif ! echo "$stdout" | jq -e '.decision == "block"' > /dev/null 2>&1; then
+  finish_fail "stdout missing decision:block — got: $stdout"
+elif ! echo "$stdout" | jq -e '.reason | contains("iteration budget exhausted")' > /dev/null 2>&1; then
+  finish_fail "stdout reason not the grace-turn prompt — got: $(echo "$stdout" | jq -r .reason)"
+elif ! echo "$stdout" | jq -e '.reason | contains("Emit <ship-done>Blocked</ship-done>")' > /dev/null 2>&1; then
+  finish_fail "grace-turn prompt missing Blocked-marker instruction"
+else
+  new_iter=$(grep '^iteration:' .claude/auriga-go-ship.local.md | sed 's/iteration: *//')
+  if [[ "$new_iter" != "31" ]]; then
+    finish_fail "expected iteration=31 after grace-turn bump, got $new_iter"
+  else
+    finish_ok
+  fi
+fi
+
+# ---- 5b. iter > max, no marker → forced Blocked exit (grace turn already spent) ----
+start "iter > max → forced exit, state removed"
+make_state 31 30
+make_transcript "still no marker after grace turn" > /dev/null
 stdout=$(make_hook_input ./transcript.jsonl | run_hook)
 rc=$?
 if [[ $rc -ne 0 ]]; then
@@ -286,6 +311,98 @@ elif [[ -f .claude/auriga-go-ship.local.md ]]; then
   finish_fail "state file should have been removed (marker in final block)"
 else
   finish_ok
+fi
+
+# ---- 12. session_id empty in state → process normally (substitution fell through) ----
+start "empty state session_id → no session gate, re-feed normally"
+cat > .claude/auriga-go-ship.local.md <<'EOF'
+---
+active: true
+iteration: 2
+max_iterations: 30
+session_id:
+started_at: 2026-04-19T00:00:00Z
+---
+
+Continue ship mode. This prompt body is what the hook re-feeds.
+EOF
+make_transcript "working" > /dev/null
+stdout=$(make_hook_input ./transcript.jsonl "any-session-id" | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ ! -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should still exist"
+elif ! echo "$stdout" | jq -e '.decision == "block"' > /dev/null 2>&1; then
+  finish_fail "expected decision:block re-feed — got: $stdout"
+else
+  new_iter=$(grep '^iteration:' .claude/auriga-go-ship.local.md | sed 's/iteration: *//')
+  if [[ "$new_iter" != "3" ]]; then
+    finish_fail "expected iteration=3, got $new_iter"
+  else
+    finish_ok
+  fi
+fi
+
+# ---- 13. max_iterations=0 → treated as corruption ----
+start "max_iterations=0 → corrupt, state removed"
+make_state 1 0
+make_transcript "x" > /dev/null
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc"
+elif [[ -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should have been removed"
+elif ! grep -q "corrupted" stderr.log; then
+  finish_fail "expected corruption warning on stderr, got: $(cat stderr.log)"
+else
+  finish_ok
+fi
+
+# ---- 14. duplicate markers (Ready + Blocked) in same block → first match wins ----
+start "Ready + Blocked in one block → Ready wins, exit"
+make_state 5 30
+make_transcript "done: <ship-done>Ready</ship-done> actually wait <ship-done>Blocked</ship-done>" > /dev/null
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc"
+elif [[ -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should have been removed"
+elif ! grep -q 'detected <ship-done>Ready</ship-done>' stderr.log; then
+  finish_fail "expected Ready to win (first match), got stderr: $(cat stderr.log)"
+else
+  finish_ok
+fi
+
+# ---- 15. tool-use-only final turn (no text block in last message) → re-feed normally ----
+start "tool-use-only final turn → no marker, re-feed"
+make_state 4 30
+# Earlier assistant turn with plain text (no marker), then a tool_use-only turn.
+jq -n '{
+  role: "assistant",
+  message: { content: [ { type: "text", text: "thinking about next step" } ] }
+}' -c > ./transcript.jsonl
+jq -n '{
+  role: "assistant",
+  message: { content: [ { type: "tool_use", id: "toolu_1", name: "Bash", input: {command: "ls"} } ] }
+}' -c >> ./transcript.jsonl
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ ! -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should still exist"
+elif ! echo "$stdout" | jq -e '.decision == "block"' > /dev/null 2>&1; then
+  finish_fail "expected decision:block re-feed — got: $stdout"
+else
+  new_iter=$(grep '^iteration:' .claude/auriga-go-ship.local.md | sed 's/iteration: *//')
+  if [[ "$new_iter" != "5" ]]; then
+    finish_fail "expected iteration=5, got $new_iter"
+  else
+    finish_ok
+  fi
 fi
 
 # ---- summary ----

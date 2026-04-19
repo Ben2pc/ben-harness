@@ -34,7 +34,7 @@ Inspect state, identify the next workflow step, drive forward. Reminder-based: t
 |---|---|
 | `step` | One workflow step → return |
 | `auto` (default) | Loop steps until a hard stop |
-| `ship` (Experimental) | Loop until Draft → Ready. Hook-backed, default `max-iter` 30. **Read `references/ship.md` before invoking.** |
+| `ship` (Experimental) | Loop until Draft → Ready. Hook-backed, default `max-iter` 30. Every exit posts a PR comment. **Read `references/ship.md` before invoking.** |
 
 ## Arguments
 
@@ -84,7 +84,7 @@ Match current state to a phase in `CLAUDE.md`; pick the earliest unfinished phas
 
 Use your Agent's native task/todo tool. If the Agent has none, announce in natural language ("Working on TDD phase — writing the failing test for X") before the first tool call. Never silently begin.
 
-**ship mode additionally requires**: when the loop exits, emit `<ship-done>Ready</ship-done>` or `<ship-done>Blocked</ship-done>` — exactly one — as the final assistant text. This is the Stop-hook signal; see `references/ship.md`.
+**ship mode additionally requires**: every exit — Ready or Blocked — posts a decisions/review-points PR comment, then emits `<ship-done>Ready</ship-done>` or `<ship-done>Blocked</ship-done>` (exactly one) as the final assistant text. Ready has four terminal conditions (tests pass + deep-review empty + Ready PR comment posted + Draft→Ready flipped). See `references/ship.md` for the full contract, templates, and grace-turn mechanics.
 
 ### Recommend next action
 
@@ -120,7 +120,7 @@ Skip if source 1 was sufficient.
 
 ## Ship mode
 
-Hook-backed loop bundled with this skill — state file, completion markers, strict defaults, Blocked-exit flow all live in `references/ship.md`. Do not enter ship via natural-language trigger without user confirmation.
+Hook-backed loop bundled with this skill. State file, completion markers, strict defaults, Ready/Blocked PR-comment templates, and grace-turn mechanics all live in `references/ship.md`. Do not enter ship via natural-language trigger without user confirmation.
 
 ## Anti-patterns
 
@@ -138,15 +138,15 @@ User: continue the workflow
 
 Agent (auriga-go, auto):
   State inference (sources: git + Draft PR):
-  - Current branch feat/auriga-go-skill + Draft PR #20 → branch + Draft PR created
-  - docs/specs/auriga-go-design.md exists → requirement clarification done
+  - Current branch feat/X + Draft PR #N → branch + Draft PR created
+  - docs/specs/X.md exists → requirement clarification done
   - No recent test run → verification not started
   Inferred position: TDD phase. Proceed?
 
 User: yes
 
 Agent (auriga-go, auto):
-  [records "TDD phase — invoke test-designer on docs/specs/auriga-go-design.md"
+  [records "TDD phase — invoke test-designer on docs/specs/X.md"
    as a task in the native tracker, then invokes test-designer]
 ```
 
