@@ -49,7 +49,7 @@ A workflow skill that drives the Agent forward along the CLAUDE.md 12-step workf
 | Stop at `AskUserQuestion`-style choice | yes | yes | **no — applies strictest CLAUDE.md default (see ship-defaults table below)** |
 | Test / verification failure | n/a (single step) | stops | **enters fix-loop** (`systematic-debugging` → fix → re-run, until pass or `max-iter` exceeded) |
 | Spec precondition | none | none | **spec exists in `docs/specs/`** OR ship invokes `brainstorming` first (which still asks the user — "strictest default" is *to ask*, not skip) |
-| Default `max-iter` | n/a | ~10 | ~30 |
+| Default `max-iter` | n/a | n/a (no hard budget; hard stops + human-decision gates terminate naturally) | ~30, enforced by bundled Stop hook |
 | Expected human prompts in session | per step | a few | ideally 0 (Experimental — may surface) |
 
 ## Ship-mode strict defaults (locked in)
@@ -83,7 +83,7 @@ When `mode=ship` reaches a CLAUDE.md decision point that would normally trigger 
 
 - **Autonomy tension** with CLAUDE.md's "Automation ladder — start low" principle. Mitigations: two-class hard-stop contract (ambiguity / destructive), per-iteration intent echo, loop-budget cap, `mode=step` escape hatch.
 - **State-detection misreads** in fallback path D — a wrong inference could push the Agent toward the wrong next action. Mitigation: fallback-path results must be confirmed with the user before todos are written.
-- **Loop runaway** in `mode=auto` / `mode=ship` without an iteration cap. Mitigation: per-mode `max-iter` budget defined in the mode comparison table (auto ~10, ship ~30); fix-loop iterations count against the same budget.
+- **Loop runaway** in `mode=ship` (no cap → runaway cost). Mitigation: hard `max-iter` budget (~30) enforced by the bundled Stop hook; fix-loop iterations count against the same budget. `mode=auto` has no hard cap but natural human-decision gates (`AskUserQuestion`, Plan approval, Confirmation Contract) fire as de facto pause points.
 - **Version skew** with CLAUDE.md workflow — if the 12-step workflow evolves, `auriga-go`'s encoded view drifts. Mitigation: pin the workflow version in SKILL.md; treat workflow rewrites as a trigger to bump the skill.
 - **Ship mode produces a flawed Ready PR** — high-autonomy mode can ship code with subtle issues that no human caught mid-flight. Mitigations: (i) strictest defaults at every decision point (see "Ship-mode strict defaults"); (ii) in-Draft `deep-review` self-pass before flipping Ready; (iii) `max-iter` cap with a clear "blocked, here's why" PR comment on budget exhaustion (no silent give-up); (iv) `Experimental` tag both in SKILL.md header and as a one-line runtime warning when invoked, so users explicitly opt in; (v) per-iteration intent echo so the audit trail is recoverable post-hoc.
 
