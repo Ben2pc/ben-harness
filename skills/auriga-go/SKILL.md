@@ -152,11 +152,11 @@ Everything else is push-forward territory:
 When current-state inference came from sources 2–4 (not from main-Agent context), present findings and confirm with the user **before writing todos and proceeding**:
 
 ```
-状态推断（来自 [task_plan.md / Draft PR body / git heuristics]）：
+State inference (sources: [task_plan.md / Draft PR body / git heuristics]):
 - <signal 1> → <inference 1>
 - <signal 2> → <inference 2>
 
-推断当前在 step <N>，下一步 <action>。确认后我开始执行。
+Inferred position: step <N>. Next action: <action>. Proceed?
 ```
 
 This is the mitigation for wrong fallback inference. A wrong guess compounds across iterations; one confirmation up front saves a runaway loop.
@@ -190,16 +190,16 @@ If main-Agent context was sufficient (source 1 only), skip this — confirmation
 ### Resume after `/clear`
 
 ```
-User: 按照工作流继续
+User: continue the workflow
 
 Agent (auriga-go, auto):
-  状态推断（来自 git + Draft PR）：
-  - 当前分支 feat/auriga-go-skill + Draft PR #20 → step 4 已完成
-  - docs/specs/auriga-go-design.md 存在 → step 1 已完成
-  - 测试未跑 → step 9 未开始
-  推断当前在 step 7 TDD。确认后我开始执行。
+  State inference (sources: git + Draft PR):
+  - Current branch feat/auriga-go-skill + Draft PR #20 → step 4 done
+  - docs/specs/auriga-go-design.md exists → step 1 done
+  - No recent test run → step 9 not started
+  Inferred position: step 7 (TDD). Proceed?
 
-User: 确认
+User: yes
 
 Agent (auriga-go, auto):
   [records "step 7 TDD — invoke test-designer on docs/specs/auriga-go-design.md"
@@ -213,7 +213,7 @@ User: /auriga-go step
 
 Agent (auriga-go, step):
   [records "step 10 PR readiness — push + update PR body" as a task]
-  推荐执行：git push && gh pr edit --body-file <updated body>。继续吗？
+  Suggested command: git push && gh pr edit --body-file <updated body>. Proceed?
 ```
 
 ### Hard stop on ambiguity
@@ -222,7 +222,8 @@ Agent (auriga-go, step):
 Agent (auriga-go, auto):
   [task tracker shows "step 12 — triage deep-review punch list"]
 
-  Stop: deep-review 返回 3 blocking，#2 涉及架构调整（重构 src/skills.ts），按
-  CLAUDE.md step 12 应"高风险变更立 issue 跟踪，不并入本 PR"。需要确认：本 PR 内
-  修复还是新开 issue？
+  Stop: deep-review returned 3 blocking findings. #2 requires an architectural
+  refactor (src/skills.ts); per CLAUDE.md step 12, "high-risk changes should be
+  tracked as separate issues, not bundled into this PR." Need confirmation: fix
+  inside this PR, or open a tracking issue?
 ```
