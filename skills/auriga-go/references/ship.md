@@ -144,7 +144,7 @@ Decisions not in this table and not pre-decided by the spec → ambiguity → ha
 Blocked is reached in one of two ways:
 
 - **Voluntary** — mid-iteration hard stop: ambiguity that can't be resolved by strict defaults, destructive/irreversible op, or the Agent judges the spec too thin to continue. Agent posts the comment and emits the marker on the same turn.
-- **Grace turn** — the hook detected `iteration == max_iterations` without a marker, re-fed the ceremony prompt. On this one turn only: post the Blocked comment + emit `<ship-done>Blocked</ship-done>`. **No new implementation work** — budget is spent. If the grace turn also ends with no marker, the next Stop (`iteration > max_iterations`) force-exits unconditionally.
+- **Grace turn** — budget exhausted (`iteration == max_iterations`, no marker). See "How the loop runs" above for the hook mechanic. On the grace turn: post the Blocked comment + emit `<ship-done>Blocked</ship-done>`. **No new implementation work** — budget is spent.
 
 Before emitting `<ship-done>Blocked</ship-done>`:
 

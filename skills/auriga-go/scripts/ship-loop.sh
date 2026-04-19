@@ -26,14 +26,29 @@ STATE_FILE=".claude/auriga-go-ship.local.md"
 # Gate: no state file = not in ship mode = no-op
 [[ -f "$STATE_FILE" ]] || exit 0
 
+# Defensive: without jq, later stages would `set -e` partway through and
+# leave the state file stranded. Prefer a clean shutdown over a dead loop.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "auriga-go ship: jq not on PATH. Removing state file to avoid a dead loop." >&2
+  echo "  Install jq and re-invoke /auriga-go ship to restart." >&2
+  rm "$STATE_FILE"
+  exit 0
+fi
+
 HOOK_INPUT=$(cat)
 
-# Parse YAML frontmatter (content between the two --- markers). Each grep
-# is tolerated if absent: missing-field handling lives below, not here.
-FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
-ITERATION=$(echo "$FRONTMATTER" | grep '^iteration:' | sed 's/iteration: *//' || true)
-MAX_ITERATIONS=$(echo "$FRONTMATTER" | grep '^max_iterations:' | sed 's/max_iterations: *//' || true)
-STATE_SESSION=$(echo "$FRONTMATTER" | grep '^session_id:' | sed 's/session_id: *//' || true)
+# Parse YAML frontmatter — first `---` to second `---`, exclusive. awk is
+# precise (stops at the second `---`) where sed's `/^---$/,/^---$/` is a
+# greedy range that re-triggers if the body contains another `---`, which
+# would silently pull body lines into the "frontmatter" and fail later
+# regex checks as if the state file were corrupt.
+FRONTMATTER=$(awk 'NR==1 && /^---$/{f=1; next} f && /^---$/{exit} f' "$STATE_FILE")
+
+# sed strips leading AND trailing whitespace so tabs / accidental trailing
+# spaces don't get into the numeric-regex check below.
+ITERATION=$(echo "$FRONTMATTER" | grep '^iteration:' | sed -E 's/^iteration:[[:space:]]*//; s/[[:space:]]+$//' || true)
+MAX_ITERATIONS=$(echo "$FRONTMATTER" | grep '^max_iterations:' | sed -E 's/^max_iterations:[[:space:]]*//; s/[[:space:]]+$//' || true)
+STATE_SESSION=$(echo "$FRONTMATTER" | grep '^session_id:' | sed -E 's/^session_id:[[:space:]]*//; s/[[:space:]]+$//' || true)
 
 # Session isolation — state file is project-scoped but session-specific.
 # If another session is running against the same file, don't interfere.
@@ -42,9 +57,9 @@ if [[ -n "$STATE_SESSION" ]] && [[ "$STATE_SESSION" != "$HOOK_SESSION" ]]; then
   exit 0
 fi
 
-# Validate required numeric fields. max_iterations must be a positive int;
-# zero or missing means the state file was hand-authored in a way that
-# would silently kill the loop at iter 1 — treat as corruption.
+# Validate required numeric fields. max_iterations must be a positive int
+# (zero would silently kill at iter 1). iteration=0 is accepted on purpose
+# — harmless, since the atomic increment bumps to 1 before any re-feed.
 if [[ ! "$ITERATION" =~ ^[0-9]+$ ]] || [[ ! "$MAX_ITERATIONS" =~ ^[0-9]+$ ]] || [[ "$MAX_ITERATIONS" -eq 0 ]]; then
   echo "auriga-go ship: state file corrupted ($STATE_FILE)" >&2
   echo "  iteration='$ITERATION' max_iterations='$MAX_ITERATIONS' (max_iterations must be a positive integer)" >&2
@@ -53,17 +68,25 @@ if [[ ! "$ITERATION" =~ ^[0-9]+$ ]] || [[ ! "$MAX_ITERATIONS" =~ ^[0-9]+$ ]] || 
   exit 0
 fi
 
-# Read transcript to scan the final assistant text block for the marker
-TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path')
-if [[ ! -f "$TRANSCRIPT_PATH" ]]; then
-  echo "auriga-go ship: transcript not found at $TRANSCRIPT_PATH. Exiting loop." >&2
+# Read transcript to scan the final assistant text block for the marker.
+TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // ""')
+if [[ -z "$TRANSCRIPT_PATH" ]] || [[ ! -f "$TRANSCRIPT_PATH" ]]; then
+  echo "auriga-go ship: transcript not found or unspecified ('$TRANSCRIPT_PATH'). Exiting loop." >&2
   rm "$STATE_FILE"
   exit 0
 fi
 
-# Claude Code writes each content block as its own JSONL assistant-role line.
-# Slurp the last 100 assistant lines, flatten to text blocks, take the final one.
-LAST_LINES=$(grep '"role":"assistant"' "$TRANSCRIPT_PATH" | tail -n 100 || true)
+# Pre-filter to assistant lines that contain at least one text block, then
+# take the last 100. Counting by message rather than JSONL line matters
+# because each content block is its own line — a long fix-loop full of
+# tool_use blocks would otherwise push the earlier text (and any marker)
+# past the tail window.
+set +e
+LAST_LINES=$(jq -c '
+  select(.role == "assistant") |
+  select(any(.message.content[]?; .type == "text"))
+' "$TRANSCRIPT_PATH" 2>/dev/null | tail -n 100)
+set -e
 
 MARKER=""
 if [[ -n "$LAST_LINES" ]]; then
@@ -100,28 +123,40 @@ if [[ $ITERATION -gt $MAX_ITERATIONS ]]; then
   exit 0
 fi
 
-# Extract prompt body (everything after the closing --- of the frontmatter)
-PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
+# Extract prompt body — everything after the second `---`. Once we've
+# counted two separators, every subsequent line is body content, including
+# any `---` markdown horizontal rule the user puts in the prompt.
+PROMPT_TEXT=$(awk '/^---$/ && i<2 {i++; next} i>=2' "$STATE_FILE")
 if [[ -z "$PROMPT_TEXT" ]]; then
   echo "auriga-go ship: no prompt body in state file. Exiting loop." >&2
   rm "$STATE_FILE"
   exit 0
 fi
 
-# Atomically update iteration count (mktemp avoids predictable-name TOCTOU)
+# Atomically bump the iteration count. awk rewrites the whole file —
+# frontmatter-scoped, so body lines starting with `iteration:` don't get
+# accidentally rewritten (which an unscoped sed would do). mktemp gives
+# an unguessable temp name; trap cleans it up if we die before mv.
 NEXT_ITERATION=$((ITERATION + 1))
 TMP=$(mktemp "${STATE_FILE}.XXXXXX")
-sed "s/^iteration: .*/iteration: $NEXT_ITERATION/" "$STATE_FILE" > "$TMP"
+trap 'rm -f "$TMP"' EXIT
+awk -v new_iter="$NEXT_ITERATION" '
+  NR==1 && /^---$/ {f=1; print; next}
+  f && /^---$/ {f=0; print; next}
+  f && /^iteration:/ {print "iteration: " new_iter; next}
+  {print}
+' "$STATE_FILE" > "$TMP"
 mv "$TMP" "$STATE_FILE"
+trap - EXIT
 
 # 3. At cap, no marker → grace turn: re-feed a terminal ceremony prompt
-#    asking the Agent to post the Blocked PR comment and emit the marker.
-#    iter is now max+1, so the next Stop (without marker) hits case 2.
+#    that points at the ship-Blocked PR comment template. iter is now
+#    max+1, so the next Stop (without marker) hits case 2.
 if [[ $ITERATION -eq $MAX_ITERATIONS ]]; then
   GRACE_PROMPT="auriga-go ship: iteration budget exhausted ($ITERATION/$MAX_ITERATIONS reached). One grace turn remains to close out cleanly.
 
 On this turn only:
-1. Post a PR comment titled \"🚫 ship mode: Blocked at iter $ITERATION/$MAX_ITERATIONS\" using the template in skills/auriga-go/references/ship.md (autonomous decisions so far, last attempts, what's blocking, how the human can continue).
+1. Post a PR comment titled \"🚫 ship mode: Blocked at iter $ITERATION/$MAX_ITERATIONS\" using the canonical template in skills/auriga-go/references/ship.md (§ \"ship-Blocked PR comment (required before emitting Blocked)\") — all five sections.
 2. Emit <ship-done>Blocked</ship-done> as the final assistant text.
 Do no other work. Do not try to keep solving — the budget is spent; this turn is ceremony only."
 

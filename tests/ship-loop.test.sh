@@ -164,6 +164,11 @@ else
   finish_ok
 fi
 
+# ---- 5 + 5b: paired. Together they cover the at-cap → over-cap progression.
+#   5  — iter == max, no marker → hook injects grace-turn ceremony prompt,
+#         bumps iter to max+1, leaves state file.
+#   5b — iter >  max (because grace turn elapsed without a marker) → hook
+#         force-exits and removes state file.
 # ---- 5. iter == max, no marker → grace-turn ceremony prompt, state preserved ----
 start "iter == max → grace turn injected, iter bumped to max+1"
 make_state 30 30
@@ -403,6 +408,102 @@ else
   else
     finish_ok
   fi
+fi
+
+# ---- 16. body with `---` markdown horizontal rule → body preserved across re-feed ----
+start "body with ---HR → re-fed body keeps both paragraphs"
+cat > .claude/auriga-go-ship.local.md <<'EOF'
+---
+active: true
+iteration: 3
+max_iterations: 30
+session_id: test-session-abc
+started_at: 2026-04-19T00:00:00Z
+---
+
+First paragraph before the rule.
+
+---
+
+Second paragraph after the rule.
+EOF
+make_transcript "no marker" > /dev/null
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ ! -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should still exist (unsafe frontmatter parse would have deleted it as corrupt)"
+elif ! echo "$stdout" | jq -e '.reason | contains("First paragraph") and contains("Second paragraph")' > /dev/null 2>&1; then
+  finish_fail "re-fed body should include both paragraphs — got: $(echo "$stdout" | jq -r .reason)"
+else
+  new_iter=$(grep '^iteration:' .claude/auriga-go-ship.local.md | sed 's/iteration: *//')
+  if [[ "$new_iter" != "4" ]]; then
+    finish_fail "expected iteration=4, got $new_iter"
+  else
+    finish_ok
+  fi
+fi
+
+# ---- 17. long transcript: marker in text message, >100 tool_use-only blocks after ----
+start "long transcript >100 tool_use blocks → pre-filter keeps marker"
+make_state 5 30
+# First: a text message containing the Ready marker.
+jq -n '{
+  role: "assistant",
+  message: { content: [ { type: "text", text: "all done <ship-done>Ready</ship-done>" } ] }
+}' -c > ./transcript.jsonl
+# Then: 150 tool_use-only assistant messages. Under a naive line-based
+# tail -n 100 these would push the text line off the window and the
+# hook would miss the marker.
+i=0
+while [[ $i -lt 150 ]]; do
+  jq -n --argjson i "$i" '{
+    role: "assistant",
+    message: { content: [ { type: "tool_use", id: ("toolu_" + ($i | tostring)), name: "Bash", input: {command: "ls"} } ] }
+  }' -c >> ./transcript.jsonl
+  i=$((i + 1))
+done
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "Ready marker should have triggered exit (state removed) — got stderr: $(cat stderr.log)"
+elif ! grep -q 'detected <ship-done>Ready</ship-done>' stderr.log; then
+  finish_fail "expected Ready detection, got stderr: $(cat stderr.log)"
+else
+  finish_ok
+fi
+
+# ---- 18. hook input missing transcript_path field → graceful exit ----
+start "missing transcript_path → state removed, clean exit"
+make_state 2 30
+# Hook input has only session_id, no transcript_path.
+stdout=$(echo '{"session_id":"test-session-abc"}' | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should have been removed"
+elif ! grep -q "transcript not found or unspecified" stderr.log; then
+  finish_fail "expected graceful missing-path message, got: $(cat stderr.log)"
+else
+  finish_ok
+fi
+
+# ---- 19. transcript_path is a dead symlink → treated as missing file ----
+start "dead-symlink transcript → state removed"
+make_state 2 30
+ln -s ./no-such-target.jsonl ./deadlink.jsonl
+stdout=$(make_hook_input ./deadlink.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc"
+elif [[ -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should have been removed"
+else
+  finish_ok
 fi
 
 # ---- summary ----

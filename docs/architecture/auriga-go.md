@@ -3,7 +3,7 @@
 **Status**: stable · promoted from `docs/specs/` on 2026-04-19
 **Workflow version anchor**: auriga Workflow v1.3.0 (`CLAUDE.md`)
 
-> This document captures the **decisions and rationale** behind auriga-go. The **live runtime contract** — modes, markers, state-file schema, strict defaults, PR-comment templates, grace-turn mechanics — lives in `skills/auriga-go/SKILL.md` and `skills/auriga-go/references/ship.md`. When this doc disagrees with those, the skill files win.
+> This document captures the **decisions and rationale** behind auriga-go. The **live runtime contract** — modes, markers, state-file schema, strict defaults, grace-turn mechanics — lives in `skills/auriga-go/SKILL.md`; the ship-mode specifics (PR-comment templates, Ready/Blocked ceremonies) live in `skills/auriga-go/references/ship.md`. When this doc disagrees with those, the skill files win.
 
 ## Purpose
 
