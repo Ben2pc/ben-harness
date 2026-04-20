@@ -87,11 +87,21 @@ The Stop hook + state file both survive `/clear` and compaction. Mid-ship `/clea
 All four must hold before emitting `<ship-done>Ready</ship-done>`:
 
 1. Tests pass (full `verification-before-completion`)
-2. In-Draft `deep-review` returns an empty blocking-list
+2. In-Draft `deep-review` blocking findings are all **closed out** (fixed in the PR, or explicitly deferred to a follow-up issue per CLAUDE.md step 12)
 3. **ship-Ready PR comment posted** (template below)
 4. PR flipped Draft → Ready
 
 If any fails mid-iteration, continue the main loop: invoke `systematic-debugging`, apply the fix, re-run, iterate. Iterations count against the same `max_iterations` — no private counters.
+
+### On deep-review rounds & spec alignment
+
+"Closed out" means every blocking finding from a round of `deep-review` has been addressed — fixed in this PR, or explicitly deferred to a follow-up issue. **Do not re-dispatch `deep-review` purely to verify fixes landed** — the TDD + verification pipeline covers that. Re-running `deep-review` repeatedly inside a single ship iteration is a smell: findings are being patched superficially, or the Agent is hunting for a cleanliness that isn't part of the ship contract. The Ready gate is "all blocking addressed," not "the reviewers would approve on the next pass too."
+
+**Spec alignment is the most important review dimension in ship mode.** Unlike `auto` / `step` modes, there is no human checkpoint between the spec and PR Ready. Misinterpreting the spec — implementing the wrong thing, missing an acceptance criterion, drifting into adjacent scope — cannot be caught by the tests (the Agent wrote those from its own interpretation). The Agent **must add a `spec-alignment` reviewer** to the ship-mode `deep-review` dispatch, alongside the usual correctness / consistency / docs-sync and tagged dimensions:
+
+- **Inputs**: the spec file driving this ship run, plus the full PR diff — nothing else. The reviewer must not read the Agent's commit messages, PR body, or `自主决定 / Autonomous decisions` section; those would bias it toward confirming the Agent's own reading.
+- **Core question**: does the diff implement exactly what the spec describes? Flag missing acceptance criteria, scope present in the code but not in the spec, and any interpretation where the diff locks in a choice the spec left open.
+- **Severity floor**: "diff does not satisfy a stated acceptance criterion" is **blocking**. "Diff adds scope the spec doesn't cover" is blocking unless the scope is an unavoidable enabler (document that in `自主决定 / Autonomous decisions` if so). "Spec ambiguity resolved in a particular way" is non-blocking when documented.
 
 ### ship-Ready PR comment (required before emitting Ready)
 
@@ -100,20 +110,20 @@ Post this as a new PR comment, then flip Draft → Ready, then emit the marker.
 ```markdown
 ## 🚢 ship mode: Ready at iter <N>/<max-iter>
 
-### 自主决定 (strict defaults applied)
+### 自主决定 / Autonomous decisions
 <One bullet per decision point that surfaced, naming the decision and
 the strict default chosen. Example:
 - Step 7 test design → test-designer (Independent Evaluation)
 - Step 10 spec lifecycle → promoted docs/specs/X.md to docs/architecture/>
 
-### 迭代中的 case-specific 判断
+### 迭代中的个案判断 / Case-specific judgments
 <Bullet list of judgments not pre-decided by the strict-defaults table —
 small structural choices, test-failure fix directions, scope trims.
 One line each: "<decision> — why". Example:
 - Replaced the 4-arg helper with a config object — 3rd caller made the
   positional form unreadable>
 
-### 人需要验收 / review 的点
+### 需要人工验收的点 / Review points
 <Bullet list of things the human partner should eyeball. Frame as
 "please verify", not "I think this is fine". Example:
 - Verify the PR title + body match the actual scope shipped
@@ -139,6 +149,8 @@ At each decision point the auriga workflow surfaces (see `CLAUDE.md` for the aut
 
 Decisions not in this table and not pre-decided by the spec → ambiguity → hard stop → `Blocked` exit. **Don't invent a ship default not listed here.**
 
+**Quick Development Flow exception**: CLAUDE.md's "Quick Development Flow" clause (small scope, unambiguous spec) allows brainstorming and planning to be skipped wholesale. When it applies, the "Choosing a planning method" row above **does not surface as a decision point**, and the strict default does not apply. The Agent should **explicitly record** this judgment in the ship-Ready / ship-Blocked PR comment's `自主决定 / Autonomous decisions` section (e.g., "Applied Quick Development Flow — planning phase skipped") so reviewers can cross-reference the CLAUDE.md clause.
+
 ## Blocked exit
 
 Blocked is reached in one of two ways:
@@ -159,13 +171,13 @@ No silent give-up.
 ```markdown
 ## 🚫 ship mode: Blocked at iter <N>/<max-iter>
 
-### 自主决定 (strict defaults applied so far)
+### 自主决定 / Autonomous decisions
 <Same framing as the Ready template — what was locked in before the block.>
 
-### 迭代中的 case-specific 判断
+### 迭代中的个案判断 / Case-specific judgments
 <Same framing as the Ready template — judgments made up to the blocker.>
 
-### 最近的修复尝试
+### 最近的修复尝试 / Recent fix attempts
 <Up to 3 most recent fix attempts and why each failed. Example:
 1. Tried narrowing the regex to exclude the `---` separator — still matched
    the trailing `---` in markdown tables
@@ -174,17 +186,17 @@ No silent give-up.
 3. Switched to `awk` state machine — works, but tests still red because the
    fixture file itself has CRLF line endings (unconfirmed)>
 
-### 为什么 Blocked
+### Blocked 的原因 / Reason for Blocked
 <One paragraph: what's blocking, what class of block this is (ambiguity /
 destructive op / budget exhaustion / spec gap). Be concrete.>
 
-### 人继续的两条路
+### 人继续的两条路 / Paths forward
 1. **Bump max-iter and resume**: `/auriga-go ship <larger number>` if the
    block was just budget and the last attempt was on the right track.
 2. **Take over manually**: checkout the branch, finish by hand. State file
    is already removed, so no ship residue to clean up.
 
-### 人需要验收 / review 的点
+### 需要人工验收的点 / Review points
 <Same framing as the Ready template — even Blocked PRs leave review surface
 for the human to validate.>
 ```
