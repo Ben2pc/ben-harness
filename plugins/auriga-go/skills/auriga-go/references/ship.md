@@ -100,20 +100,20 @@ Post this as a new PR comment, then flip Draft → Ready, then emit the marker.
 ```markdown
 ## 🚢 ship mode: Ready at iter <N>/<max-iter>
 
-### 自主决定 (strict defaults applied)
+### 自主决定
 <One bullet per decision point that surfaced, naming the decision and
 the strict default chosen. Example:
 - Step 7 test design → test-designer (Independent Evaluation)
 - Step 10 spec lifecycle → promoted docs/specs/X.md to docs/architecture/>
 
-### 迭代中的 case-specific 判断
+### 迭代中的个案判断
 <Bullet list of judgments not pre-decided by the strict-defaults table —
 small structural choices, test-failure fix directions, scope trims.
 One line each: "<decision> — why". Example:
 - Replaced the 4-arg helper with a config object — 3rd caller made the
   positional form unreadable>
 
-### 人需要验收 / review 的点
+### 需要人工验收的点
 <Bullet list of things the human partner should eyeball. Frame as
 "please verify", not "I think this is fine". Example:
 - Verify the PR title + body match the actual scope shipped
@@ -139,6 +139,8 @@ At each decision point the auriga workflow surfaces (see `CLAUDE.md` for the aut
 
 Decisions not in this table and not pre-decided by the spec → ambiguity → hard stop → `Blocked` exit. **Don't invent a ship default not listed here.**
 
+**Quick Development Flow exception**: CLAUDE.md 的 "Quick Development Flow" 条款（spec 小且无歧义）允许 brainstorming 与 planning 两个阶段整体跳过。当它适用时，上表里"Choosing a planning method"这一行对应的决策点**根本不会出现**，因此表里的 strict default 不做要求。Agent 应在 ship-Ready / ship-Blocked PR comment 的「自主决定」段里**显式记录**这条判断（例如 "Applied Quick Development Flow — planning phase skipped"），方便复核对到 CLAUDE.md 条款。
+
 ## Blocked exit
 
 Blocked is reached in one of two ways:
@@ -159,10 +161,10 @@ No silent give-up.
 ```markdown
 ## 🚫 ship mode: Blocked at iter <N>/<max-iter>
 
-### 自主决定 (strict defaults applied so far)
+### 自主决定
 <Same framing as the Ready template — what was locked in before the block.>
 
-### 迭代中的 case-specific 判断
+### 迭代中的个案判断
 <Same framing as the Ready template — judgments made up to the blocker.>
 
 ### 最近的修复尝试
@@ -174,7 +176,7 @@ No silent give-up.
 3. Switched to `awk` state machine — works, but tests still red because the
    fixture file itself has CRLF line endings (unconfirmed)>
 
-### 为什么 Blocked
+### Blocked 的原因
 <One paragraph: what's blocking, what class of block this is (ambiguity /
 destructive op / budget exhaustion / spec gap). Be concrete.>
 
@@ -184,7 +186,7 @@ destructive op / budget exhaustion / spec gap). Be concrete.>
 2. **Take over manually**: checkout the branch, finish by hand. State file
    is already removed, so no ship residue to clean up.
 
-### 人需要验收 / review 的点
+### 需要人工验收的点
 <Same framing as the Ready template — even Blocked PRs leave review surface
 for the human to validate.>
 ```
