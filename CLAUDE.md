@@ -1,8 +1,8 @@
-# auriga Workflow (v1.3.0)
+# auriga Workflow (v1.4.0)
 
 1. Requirement Clarification: Use `brainstorming` to clarify requirements for new features. **Requirements should focus on "what to do" and acceptance criteria, not specific technical paths.** For product features, prioritize "Why" and let the implementation-stage Agent decide how.
 
-2. Planning: After clarification, use `AskUserQuestion` to ask which planning method to use — e.g., built-in Plan for medium complexity; `planning-with-files` for long-running tasks with local persistent tracking. Plans, design decisions, and tech debt should be versioned artifacts in the repo for subsequent Agent context.
+2. Planning: After clarification, run a **scope triage** before choosing a planning method. Apply the Quick Development Flow (see "Quick Development Flow" section below; skip planning and continue at the pre-coding / branch-creation phase) **only when all three predicates hold**: (a) the work fits within a single module or one cohesive concept; (b) acceptance criteria fit in ≤5 bullets; (c) no cross-boundary interface changes (public APIs, schemas, shared modules). Record the triage verdict in the task tracker (e.g., "scope triage → QDF: single module, 3 acceptance bullets, no interface change"). If any predicate fails or you're unsure, take the full path: use `AskUserQuestion` to ask which planning method to use — e.g., built-in Plan for medium complexity; `planning-with-files` for long-running tasks with local persistent tracking. Plans, design decisions, and tech debt should be versioned artifacts in the repo for subsequent Agent context.
 
 3. Pre-coding 1: **Create a development branch from main before writing code.** All commits go on the branch — never commit directly to main. Branch naming: `feat/` (feature), `fix/` (bugfix), `docs/` (documentation), `refactor/` (refactoring), `chore/` (chores).
 
@@ -26,7 +26,7 @@
 
 ## Quick Development Flow (bug fix / small refactor / small feature)
 
-Skip brainstorming and planning only; branch, Draft PR, TDD, verification, and review rules still apply. Steps:
+Triggered when the planning-phase scope triage finds all three predicates hold. Skips planning only — requirement clarification, branch, Draft PR, TDD, verification, and review rules still apply. Steps:
 
 1. **Run baseline**: Run existing tests for affected modules to confirm current state (all green or pre-existing failures)
 2. **Write/update tests** (red): Use `test-driven-development` to describe expected behavior. When changes touch shared modules, ensure all consumers' tests are in the baseline
@@ -41,7 +41,7 @@ Repo documentation lives under `docs/`, directory-per-purpose, so Agents, the `p
 
 | Directory | Purpose | Lifecycle |
 |---|---|---|
-| `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at step 10 when the PR is marked Ready for Review. One subdirectory per PR; `docs/worklog/` is the single parent so listings stay grouped. | Permanent after PR merge |
+| `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | Archived session-ephemeral planning artifacts (`findings.md`, `progress.md`, `task_plan.md`, design specs). Created at the PR-readiness phase when the PR is marked Ready for Review. One subdirectory per PR; `docs/worklog/` is the single parent so listings stay grouped. | Permanent after PR merge |
 | `docs/rules/` | Coding conventions, review checklists, naming / style decisions. | Long-lived, maintained |
 | `docs/specs/` | **Default destination for `brainstorming` outputs.** Temporary working area for active specs / requirement clarifications during development. **Must be empty by PR Ready** — promote each spec to `docs/architecture/` (long-lived reference), archive to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` (historical trace), or delete. Enforced by `pr-ready-guard`. | Ephemeral during dev |
 | `docs/architecture/` | Stable, long-lived design docs (module layouts, data flows, component responsibilities). New entries usually arrive by promotion from `docs/specs/`. | Long-lived |
@@ -75,7 +75,7 @@ Choose the right level of delegation:
 | Parallel read tasks (review, search, analysis) | In-conversation subagents, no isolation needed |
 | Single subagent writes code | In-conversation subagent, no isolation needed |
 | Multiple subagents write code | Invoke `parallel-implementation` skill to plan the split, then dispatch with `isolation: "worktree"` per plan |
-| Need fresh perspective with zero context pollution | Independent Agent (e.g., test design per step 7) |
+| Need fresh perspective with zero context pollution | Independent Agent (e.g., test design at the TDD red phase) |
 | Cross-model blind spot coverage | Independent Agent (e.g., GPT reviews Claude's code) |
 | Unsure which approach fits | `AskUserQuestion` — present options with your recommendation |
 

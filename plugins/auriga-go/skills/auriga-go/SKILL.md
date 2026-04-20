@@ -85,6 +85,13 @@ Use your Agent's native task/todo tool. If the Agent has none, announce in natur
 
 Name the phase (in `CLAUDE.md`'s own terms) + the action or skill to invoke. Examples: "requirement clarification phase → invoke `brainstorming`", "TDD red phase → invoke `test-designer` with the spec", "formal review phase → invoke `deep-review`". The main Agent executes.
 
+**Mandatory emissions before recommending green-phase code work** — at the TDD red phase + parallel-implementation decision points named in CLAUDE.md. Both must be recorded in the task tracker as a single line each, *before* recommending any Write/Edit on production code:
+
+1. Change-size estimate: `<N> module(s), <M> file(s), ~<L> lines/file` — the input the parallel-implementation thresholds key off of.
+2. `test-designer` applicability: `Y/N — <one-line reason>` — the TDD-phase "complex feature" judgment.
+
+These exist so the **skip** decisions at those two phases are auditable. CLAUDE.md's own escape hatch ("below thresholds, write inline — multi-agent overhead outweighs the gain") is legitimate; what is not legitimate is skipping silently. If either emission is missing when green-phase code lands, treat it as workflow drift on the next pass.
+
 ## Stop Contract
 
 Hard-stop and return control to the user in exactly two situations:
@@ -123,6 +130,7 @@ Hook-backed loop bundled with this skill. State file, completion markers, strict
 - ❌ Silently starting work — always record the phase in the task tracker first
 - ❌ Proceeding past a fallback inference without running the Confirmation Contract
 - ❌ Bypassing the Stop Contract for "small" destructive ops
+- ❌ Entering green phase without emitting the change-size estimate + `test-designer` applicability lines (the TDD + parallel-implementation skip-or-go decisions must be auditable)
 
 ## Example invocations
 

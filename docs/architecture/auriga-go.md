@@ -1,7 +1,7 @@
 # auriga-go — Workflow Autopilot Skill
 
 **Status**: stable · promoted from `docs/specs/` on 2026-04-19
-**Workflow version anchor**: auriga Workflow v1.3.0 (`CLAUDE.md`)
+**Workflow version anchor**: auriga Workflow v1.4.0 (`CLAUDE.md`)
 
 > This document captures the **decisions and rationale** behind auriga-go. The **live runtime contract** — modes, markers, state-file schema, strict defaults, grace-turn mechanics — lives in `plugins/auriga-go/skills/auriga-go/SKILL.md`; the ship-mode specifics (PR-comment templates, Ready/Blocked ceremonies) live in `plugins/auriga-go/skills/auriga-go/references/ship.md`. When this doc disagrees with those, the skill files win.
 
@@ -68,7 +68,7 @@ A workflow skill that drives the Agent forward along the auriga workflow (`CLAUD
 - `plugins/auriga-go/.claude-plugin/plugin.json` — plugin metadata (name, description, author)
 - `plugins/auriga-go/hooks/hooks.json` — Stop hook registered at plugin level, `command: "${CLAUDE_PLUGIN_ROOT}/scripts/ship-loop.sh"`
 - `plugins/auriga-go/skills/auriga-go/SKILL.md` — frontmatter (`argument-hint`), algorithm, Stop/Confirmation contracts, three-mode table, examples. No `hooks:` block — the hook is registered at plugin level
-- `plugins/auriga-go/skills/auriga-go/references/ship.md` — hook-backed loop contract, marker schema, state-file schema, strict-defaults table, Ready/Blocked PR-comment templates, grace-turn mechanics, Blocked-exit protocol
+- `plugins/auriga-go/skills/auriga-go/references/ship.md` — hook-backed loop contract, marker schema, state-file schema, strict-defaults table, Ready/Blocked PR-comment templates, grace-turn mechanics, Blocked exit protocol
 - `plugins/auriga-go/scripts/ship-loop.sh` — Stop hook adapted from ralph-loop, state-file-gated so step/auto are untouched; unit tests at `tests/ship-loop.test.sh`
 - `plugins/auriga-go/README.md` — plugin overview and manual install instructions
 - Repo-root `.claude-plugin/marketplace.json` — marketplace manifest listing auriga-go

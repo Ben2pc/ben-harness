@@ -1,8 +1,8 @@
-# auriga 工作流 (v1.3.0)
+# auriga 工作流 (v1.4.0)
 
 1. 需求澄清：新需求先用 `brainstorming` 澄清requirement。**requirement聚焦"做什么"和验收标准，不写具体技术路径**，如果是产品功能优先关注"Why"，让实现阶段的 Agent 自行决定怎么做。
 
-2. 方案计划：完成需求澄清后，用 `AskUserQuestion` 询问用什么方式来plan，比如中等复杂度任务用内置 Plan；长程任务用 `planning-with-files` 做本地持久跟踪。计划、设计决策、技术债务应作为仓库内的版本化产物，方便后续 Agent 推理上下文。
+2. 方案计划：完成需求澄清后，先做一次**规模判定**再决定 plan 方式。**满足以下三条全部成立**才走快速开发流程（详见下文「快速开发流程」段；跳过 planning，直接进入 pre-coding / 建分支阶段）：(a) 工作落在单一模块或单一概念内；(b) 验收标准 ≤5 条 bullet；(c) 不涉及跨边界接口改动（公共 API、schema、共享模块）。把判定结果记进任务追踪器（例：「规模判定 → QDF：单模块，3 条验收，无接口改动」）。任一不成立或拿不准，就走完整路径：用 `AskUserQuestion` 询问用什么方式来 plan，比如中等复杂度任务用内置 Plan；长程任务用 `planning-with-files` 做本地持久跟踪。计划、设计决策、技术债务应作为仓库内的版本化产物，方便后续 Agent 推理上下文。
 
 3. 编码前准备1：**开始写代码前，先从 main 创建开发分支**，所有 commit 在分支上完成，禁止直接提交到 main。分支命名规范：`feat/`（新功能）、`fix/`（修复）、`docs/`（文档）、`refactor/`（重构）、`chore/`（杂项）。
 
@@ -26,7 +26,7 @@
 
 ## 快速开发流程（bug fix / 小重构 / 小功能）
 
-这个快捷流程只跳过 brainstorming 和 planning；分支、Draft PR、TDD、验证和 review 规则仍然适用。步骤：
+由 planning 阶段入口的规模判定三条谓词全部命中时触发。只跳过 planning——需求澄清、分支、Draft PR、TDD、验证和 review 规则仍然适用。步骤：
 
 1. **跑基线**：先跑受影响模块的现有测试，确认当前状态（全绿 or 已有失败）
 2. **写/更新测试**（红灯）：用 `test-driven-development` 描述期望行为。改动涉及公共模块时，确认所有消费方的测试都在基线内
@@ -41,7 +41,7 @@
 
 | 目录 | 用途 | 生命周期 |
 |---|---|---|
-| `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | 已归档的 session-ephemeral planning 产物（`findings.md`、`progress.md`、`task_plan.md`、设计 spec）。在 step 10 PR ready 时归档。一个 PR 一个子目录，`docs/worklog/` 作为统一父目录，方便集中查阅 | PR merge 后永久保留 |
+| `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` | 已归档的 session-ephemeral planning 产物（`findings.md`、`progress.md`、`task_plan.md`、设计 spec）。在 PR-readiness 阶段归档。一个 PR 一个子目录，`docs/worklog/` 作为统一父目录，方便集中查阅 | PR merge 后永久保留 |
 | `docs/rules/` | 编码规范、review checklist、命名 / 风格约定 | 长期维护 |
 | `docs/specs/` | **`brainstorming` 输出的默认归宿。** 开发期间存放活跃 spec / 需求澄清的临时工作区。**PR Ready 前必须清空**——每个 spec 晋升到 `docs/architecture/`（长期参考）、归档到 `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/`（历史轨迹），或删除。由 `pr-ready-guard` 强制 | 开发期临时 |
 | `docs/architecture/` | 稳定、长期的设计文档（模块布局、数据流、组件职责）。新条目通常由 `docs/specs/` 晋升而来 | 长期 |
@@ -75,7 +75,7 @@ Experimental `ship` 模式把小颗粒度 spec 跑到 PR Ready（最严格默认
 | 并行只读任务（review、搜索、分析） | 对话内 subagent，无需隔离 |
 | 单个 subagent 写代码 | 对话内 subagent，无需隔离 |
 | 多个 subagent 写代码 | 调用 `parallel-implementation` skill 产出分片计划，再按计划用 `isolation: "worktree"` 派遣 |
-| 需要零上下文污染的全新视角 | 独立 Agent（如第 7 步的测试设计） |
+| 需要零上下文污染的全新视角 | 独立 Agent（如 TDD 红灯阶段的测试设计） |
 | 跨模型盲区覆盖 | 独立 Agent（如 GPT review Claude 的代码） |
 | 不确定该用哪种方案 | 用 `AskUserQuestion` 询问，列出选项并给出建议 |
 

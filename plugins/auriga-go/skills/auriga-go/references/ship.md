@@ -26,9 +26,37 @@ The hook scans the last assistant text block for these exact tags. Emit **exactl
 
 > Naming: user-facing argument `max-iter` maps to the state-file YAML field `max_iterations`. Same value, different punctuation.
 
+> Probing grace-turn mechanics: grace fires only when `iteration == max_iterations` *and* the marker is absent. Small-scope ship runs commonly emit `<ship-done>Ready</ship-done>` in 1–2 iterations, so `max-iter=1` or `max-iter=2` rarely exercises grace — the marker wins first. To genuinely test grace, use a task sized for ≥3 iterations and set `max-iter` to one fewer than the expected iteration count.
+
+## Pre-entry check (refuse-at-the-door)
+
+Before writing any state, run a 3-predicate refusal check. **If any predicate fires, refuse without entering ship — no branch, no PR, no state file, no comment.** Output a structured one-paragraph refusal naming the failing predicate and the three alternatives below.
+
+Predicates (any one trips → refuse):
+
+1. **Shaky spec** — acceptance criteria absent or non-testable, key architectural decisions undecided, the spec itself defers ("TODO", "你帮我推进吧", "details TBD")
+2. **Production-critical scope** — touches secrets, payments, auth, shared infrastructure, or other surfaces where "almost right" carries real cost (this is the same boundary as "When NOT to use ship" below)
+3. **Oversized scope** — spec lists more than 5 acceptance bullets, or the expected diff spans more than 10 source files. Either signal means ship's iteration budget won't comfortably cover the work; route through `auto` so a human checkpoints at each phase
+
+Refusal output template:
+
+```
+ship pre-entry check: refusing because <predicate name>.
+
+<one-line concrete evidence — quote the spec, name the file/system, or
+estimate the scope>.
+
+Alternatives:
+1. brainstorming first → resolve <what> → re-invoke /auriga-go ship
+2. /auriga-go auto — same workflow with human checkpoints
+3. trim the spec to <suggested narrower scope> and re-invoke
+```
+
+Refusal is not Blocked — Blocked is a ship exit (state file existed, PR existed). Refusal happens before any of that. Codifying this turns T6's accidental good behavior into a contract.
+
 ## Entering ship mode
 
-When ship is invoked (`/auriga-go ship` or confirmed NL trigger):
+When ship is invoked (`/auriga-go ship` or confirmed NL trigger) **and the pre-entry check above passes**:
 
 1. Print the opt-in warning (once, as iter 1 begins):
    ```
@@ -87,7 +115,7 @@ The Stop hook + state file both survive `/clear` and compaction. Mid-ship `/clea
 All four must hold before emitting `<ship-done>Ready</ship-done>`:
 
 1. Tests pass (full `verification-before-completion`)
-2. In-Draft `deep-review` blocking findings are all **closed out** (fixed in the PR, or explicitly deferred to a follow-up issue per CLAUDE.md step 12)
+2. In-Draft `deep-review` blocking findings are all **closed out** (fixed in the PR, or explicitly deferred to a follow-up issue per CLAUDE.md's review-findings rule for high-risk architectural changes)
 3. **ship-Ready PR comment posted** (template below)
 4. PR flipped Draft → Ready
 
@@ -102,6 +130,7 @@ If any fails mid-iteration, continue the main loop: invoke `systematic-debugging
 - **Inputs**: the spec file driving this ship run, plus the full PR diff — nothing else. The reviewer must not read the Agent's commit messages, PR body, or `自主决定 / Autonomous decisions` section; those would bias it toward confirming the Agent's own reading.
 - **Core question**: does the diff implement exactly what the spec describes? Flag missing acceptance criteria, scope present in the code but not in the spec, and any interpretation where the diff locks in a choice the spec left open.
 - **Severity floor**: "diff does not satisfy a stated acceptance criterion" is **blocking**. "Diff adds scope the spec doesn't cover" is blocking unless the scope is an unavoidable enabler (document that in `自主决定 / Autonomous decisions` if so). "Spec ambiguity resolved in a particular way" is non-blocking when documented.
+- **Fix-only override** (ship-specific narrowing of "closed out"): a spec-alignment blocking finding cannot be deferred to a follow-up issue. ship's contract is spec → Ready in this PR; deferring an unsatisfied acceptance criterion violates the contract. If it cannot be fixed in the current iteration, Blocked exit instead of carrying forward.
 
 ### ship-Ready PR comment (required before emitting Ready)
 
@@ -113,8 +142,8 @@ Post this as a new PR comment, then flip Draft → Ready, then emit the marker.
 ### 自主决定 / Autonomous decisions
 <One bullet per decision point that surfaced, naming the decision and
 the strict default chosen. Example:
-- Step 7 test design → test-designer (Independent Evaluation)
-- Step 10 spec lifecycle → promoted docs/specs/X.md to docs/architecture/>
+- TDD red phase test design → test-designer (Independent Evaluation)
+- PR-readiness spec lifecycle → promoted docs/specs/X.md to docs/architecture/>
 
 ### 迭代中的个案判断 / Case-specific judgments
 <Bullet list of judgments not pre-decided by the strict-defaults table —

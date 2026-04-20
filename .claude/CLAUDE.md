@@ -99,7 +99,7 @@ bash tests/ship-loop.test.sh
 
 - Version in `package.json` follows semver: patch for bugfixes, minor for new features, major for breaking changes.
 - Bump version before merging feature PRs. Publish: `npm publish`.
-- **Two versions track independently**: `package.json` is the **CLI tool** version; the `CLAUDE.md` workflow header (e.g. `# auriga Workflow (v1.3.0)`) is the **workflow content** version. A CLI change may not touch the workflow; a workflow rewrite usually bumps both. Their divergence is intentional — don't treat it as a bug during review.
+- **Two versions track independently**: `package.json` is the **CLI tool** version; the `CLAUDE.md` workflow header (e.g. `# auriga Workflow (v1.4.0)`) is the **workflow content** version. A CLI change may not touch the workflow; a workflow rewrite usually bumps both. Their divergence is intentional — don't treat it as a bug during review.
 
 ## Principles
 
