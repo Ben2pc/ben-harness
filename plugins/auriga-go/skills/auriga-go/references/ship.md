@@ -36,7 +36,7 @@ Predicates (any one trips → refuse):
 
 1. **Shaky spec** — acceptance criteria absent or non-testable, key architectural decisions undecided, the spec itself defers ("TODO", "你帮我推进吧", "details TBD")
 2. **Production-critical scope** — touches secrets, payments, auth, shared infrastructure, or other surfaces where "almost right" carries real cost (this is the same boundary as "When NOT to use ship" below)
-3. **Scope > half a day** of focused work for a competent developer — ship's iteration budget is sized for small features; large work should go through `auto` so a human checkpoints at each phase
+3. **Oversized scope** — spec lists more than 5 acceptance bullets, or the expected diff spans more than 10 source files. Either signal means ship's iteration budget won't comfortably cover the work; route through `auto` so a human checkpoints at each phase
 
 Refusal output template:
 
