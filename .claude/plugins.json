@@ -18,6 +18,15 @@
         "name": "openai-codex",
         "source": "openai/codex-plugin-cc"
       }
+    },
+    {
+      "name": "auriga-go",
+      "package": "auriga-go@auriga-cli",
+      "description": "Workflow autopilot for the auriga workflow (reminder-based navigation + Experimental ship mode)",
+      "marketplace": {
+        "name": "auriga-cli",
+        "source": "Ben2pc/auriga-cli"
+      }
     }
   ]
 }

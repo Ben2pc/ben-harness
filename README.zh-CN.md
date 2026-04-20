@@ -60,7 +60,6 @@ npx auriga-cli
 | deep-review | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | 多维度 PR review 编排器（必选 + 条件 + punch list 汇总） |
 | test-designer | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | TDD 红灯阶段的 Independent Evaluation 测试设计器 |
 | parallel-implementation | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | 多 subagent 并行写代码时的切片计划器 |
-| auriga-go | [Ben2pc/auriga-cli](https://github.com/Ben2pc/auriga-cli) | auriga 工作流的自动驾驶：在 12 步内做 reminder-based 导航；包含 Experimental 的 hook-backed `ship` 模式 |
 
 支持 project 和 global 两种安装范围。
 
@@ -73,6 +72,7 @@ npx auriga-cli
 | skill-creator | 创建和管理自定义 skills |
 | claude-md-management | 审计和改进 CLAUDE.md |
 | codex | Codex 跨模型协作 |
+| auriga-go | auriga 工作流的自动驾驶：在 12 步内做 reminder-based 导航；包含 Experimental 的 hook-backed `ship` 模式。内置一个 skill（按 description 的自然语言触发 + `/auriga-go` slash command）和一个 plugin 层面的 Stop hook。 |
 
 ### Hooks
 

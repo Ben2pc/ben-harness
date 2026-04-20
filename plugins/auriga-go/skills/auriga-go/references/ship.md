@@ -52,8 +52,8 @@ started_at: <ISO 8601 UTC timestamp>
 ---
 
 Continue auriga-go ship mode. Re-read CLAUDE.md (the auriga workflow),
-skills/auriga-go/SKILL.md, and skills/auriga-go/references/ship.md
-before acting. Your job:
+the auriga-go skill's SKILL.md, and its references/ship.md before
+acting (both files ship with the auriga-go plugin). Your job:
 
 1. Inspect current state (git log, docs/specs/, gh pr view) to find
    where the previous iteration left off in the auriga workflow.

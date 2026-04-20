@@ -2,11 +2,6 @@
 name: auriga-go
 description: Drives the project's CLAUDE.md development workflow forward one or many phases. Trigger when the user invokes `/auriga-go`, uses a phrase explicitly naming the workflow ("按照工作流继续", "按工作流走", "drive the workflow", "workflow autopilot", "where are we in the workflow", "我们的 workflow 走到哪了"), resumes after `/clear`, or workflow drift is visible (commits on main, no Draft PR, missing branch prefix). NOT for plain "继续" / "continue" / "next" / "下一步" / "what's next" (those mean the current task, not workflow navigation), single-question lookups, one-off git commands, or exploratory discussion. Experimental `ship` mode drives spec → PR Ready autonomously (see references/ship.md).
 argument-hint: "[step|auto|ship] [max-iter]"
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: "${CLAUDE_SKILL_DIR}/scripts/ship-loop.sh"
 ---
 
 # auriga-go — Workflow Autopilot

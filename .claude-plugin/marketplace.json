@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "auriga-cli",
+  "description": "Plugins shipped by the auriga-cli Claude Code harness (auriga-go workflow autopilot, etc.)",
+  "owner": {
+    "name": "Ben2pc",
+    "email": "pangcheng33@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "auriga-go",
+      "description": "Workflow autopilot for the auriga workflow. Reminder-based navigation across the 12 CLAUDE.md phases; includes an Experimental hook-backed `ship` mode that drives a small-scope spec to PR Ready.",
+      "author": {
+        "name": "Ben2pc",
+        "email": "pangcheng33@gmail.com"
+      },
+      "source": "./plugins/auriga-go",
+      "category": "development",
+      "homepage": "https://github.com/Ben2pc/auriga-cli/tree/main/plugins/auriga-go"
+    }
+  ]
+}
