@@ -51,7 +51,9 @@
 
 需要在工作流内做导航——`/clear` 之后恢复、纠正偏离、一次推进多步——用 `/auriga-go` 触发（或说"按照工作流继续"、"按工作流走"）。它读当前状态、判定下一步、用主 Agent 自己的 task tracker 记下这一步，然后推进（`auto` 模式，默认）或只给单步建议（`step`）。reminder-based：告诉主 Agent 下一个该调什么 skill，自己不调度。只在硬歧义或破坏性操作前停。裸 "继续" / "next" **不触发**它（那些指的是当前任务而不是工作流）。
 
-Experimental `ship` 模式把小颗粒度 spec 跑到 PR Ready（最严格默认值 + hook 强制的迭代预算）。详见 `skills/auriga-go/references/ship.md`。
+Experimental `ship` 模式把小颗粒度 spec 跑到 PR Ready（最严格默认值 + hook 强制的迭代预算）。详见 `plugins/auriga-go/skills/auriga-go/references/ship.md`。
+
+> 作为 **plugin**（`auriga-go@auriga-cli`）分发，不再是 skill。plugin 内置了同样的 skill（保留按 description 的自然语言触发），并在 plugin 层面注册 ship 模式的 Stop hook。安装：`npx auriga-cli` → Plugins，或直接 `claude plugins install auriga-go@auriga-cli`。
 
 # Harness 原则
 

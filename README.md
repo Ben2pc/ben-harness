@@ -60,7 +60,6 @@ Installs selected skills via `npx skills add`, targeting both Claude Code and Co
 | deep-review | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | Multi-dimensional PR review orchestrator (required + conditional reviewers + punch list) |
 | test-designer | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | Independent-Evaluation test designer for TDD red phase |
 | parallel-implementation | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | Slice planner for parallel multi-subagent code writing |
-| auriga-go | [Ben2pc/auriga-cli](https://github.com/Ben2pc/auriga-cli) | Workflow autopilot for the auriga workflow; reminder-based navigation across the 12 steps with an Experimental hook-backed `ship` mode |
 
 Supports both project and global installation scopes.
 
@@ -73,6 +72,7 @@ Installs selected plugins via `claude plugins install`, automatically adding req
 | skill-creator | Create and manage custom skills |
 | claude-md-management | Audit and improve CLAUDE.md |
 | codex | Codex cross-model collaboration |
+| auriga-go | Workflow autopilot for the auriga workflow. Reminder-based navigation across the 12 `CLAUDE.md` phases with an Experimental hook-backed `ship` mode. Bundles a skill (description-based NL trigger + `/auriga-go`) plus a plugin-level Stop hook for ship mode. |
 
 ### Hooks
 

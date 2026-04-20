@@ -1,0 +1,15 @@
+{
+  "description": "auriga-go ship-mode Stop hook (gated by state file — no-op in step/auto modes).",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/ship-loop.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

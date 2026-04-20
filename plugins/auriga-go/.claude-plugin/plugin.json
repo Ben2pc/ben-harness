@@ -1,0 +1,8 @@
+{
+  "name": "auriga-go",
+  "description": "Workflow autopilot for the auriga workflow. Reminder-based navigation across CLAUDE.md's phases, with an Experimental hook-backed `ship` mode that drives a small-scope spec to PR Ready.",
+  "author": {
+    "name": "Ben2pc",
+    "email": "pangcheng33@gmail.com"
+  }
+}

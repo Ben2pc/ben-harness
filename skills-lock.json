@@ -1,11 +1,6 @@
 {
   "version": 1,
   "skills": {
-    "auriga-go": {
-      "source": "Ben2pc/auriga-cli",
-      "sourceType": "github",
-      "computedHash": "a839f8aaeb3aec7d87f8ed91b087e078d1a38e4f0d4abe4ec1aa71856a8278d6"
-    },
     "brainstorming": {
       "source": "obra/superpowers",
       "sourceType": "github",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unit tests for skills/auriga-go/scripts/ship-loop.sh.
+# Unit tests for plugins/auriga-go/scripts/ship-loop.sh.
 #
 # Runs each scenario in an isolated tempdir with hand-crafted fixtures
 # (state file, transcript JSONL, hook-input JSON), then asserts the
@@ -10,7 +10,7 @@
 set -uo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-HOOK="$HERE/../skills/auriga-go/scripts/ship-loop.sh"
+HOOK="$HERE/../plugins/auriga-go/scripts/ship-loop.sh"
 SESSION_ID="test-session-abc"
 
 if [[ ! -x "$HOOK" ]]; then

@@ -81,9 +81,12 @@ fi
 # because each content block is its own line — a long fix-loop full of
 # tool_use blocks would otherwise push the earlier text (and any marker)
 # past the tail window.
+#
+# Real Claude Code transcripts use `.type == "assistant"` at the top level
+# (not `.role`); `.message.role` is nested inside. Using `.type` is correct.
 set +e
 LAST_LINES=$(jq -c '
-  select(.role == "assistant") |
+  select(.type == "assistant") |
   select(any(.message.content[]?; .type == "text"))
 ' "$TRANSCRIPT_PATH" 2>/dev/null | tail -n 100)
 set -e
@@ -156,7 +159,7 @@ if [[ $ITERATION -eq $MAX_ITERATIONS ]]; then
   GRACE_PROMPT="auriga-go ship: iteration budget exhausted ($ITERATION/$MAX_ITERATIONS reached). One grace turn remains to close out cleanly.
 
 On this turn only:
-1. Post a PR comment titled \"🚫 ship mode: Blocked at iter $ITERATION/$MAX_ITERATIONS\" using the canonical template in skills/auriga-go/references/ship.md (§ \"ship-Blocked PR comment (required before emitting Blocked)\") — all five sections.
+1. Post a PR comment titled \"🚫 ship mode: Blocked at iter $ITERATION/$MAX_ITERATIONS\" using the canonical template in the auriga-go skill's references/ship.md (§ \"ship-Blocked PR comment (required before emitting Blocked)\") — all five sections.
 2. Emit <ship-done>Blocked</ship-done> as the final assistant text.
 Do no other work. Do not try to keep solving — the budget is spent; this turn is ceremony only."
 
