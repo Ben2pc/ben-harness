@@ -130,7 +130,7 @@ If any fails mid-iteration, continue the main loop: invoke `systematic-debugging
 - **Inputs**: the spec file driving this ship run, plus the full PR diff — nothing else. The reviewer must not read the Agent's commit messages, PR body, or `自主决定 / Autonomous decisions` section; those would bias it toward confirming the Agent's own reading.
 - **Core question**: does the diff implement exactly what the spec describes? Flag missing acceptance criteria, scope present in the code but not in the spec, and any interpretation where the diff locks in a choice the spec left open.
 - **Severity floor**: "diff does not satisfy a stated acceptance criterion" is **blocking**. "Diff adds scope the spec doesn't cover" is blocking unless the scope is an unavoidable enabler (document that in `自主决定 / Autonomous decisions` if so). "Spec ambiguity resolved in a particular way" is non-blocking when documented.
-- **Fix-only override** (ship-specific narrowing of "closed out"): a spec-alignment blocking finding cannot be deferred to a follow-up issue. ship's contract is spec → Ready in this PR; deferring an unsatisfied acceptance criterion violates the contract. If it cannot be fixed in the current iteration, Blocked-exit instead of carrying forward.
+- **Fix-only override** (ship-specific narrowing of "closed out"): a spec-alignment blocking finding cannot be deferred to a follow-up issue. ship's contract is spec → Ready in this PR; deferring an unsatisfied acceptance criterion violates the contract. If it cannot be fixed in the current iteration, Blocked exit instead of carrying forward.
 
 ### ship-Ready PR comment (required before emitting Ready)
 
@@ -142,8 +142,8 @@ Post this as a new PR comment, then flip Draft → Ready, then emit the marker.
 ### 自主决定 / Autonomous decisions
 <One bullet per decision point that surfaced, naming the decision and
 the strict default chosen. Example:
-- Step 7 test design → test-designer (Independent Evaluation)
-- Step 10 spec lifecycle → promoted docs/specs/X.md to docs/architecture/>
+- TDD red phase test design → test-designer (Independent Evaluation)
+- PR-readiness spec lifecycle → promoted docs/specs/X.md to docs/architecture/>
 
 ### 迭代中的个案判断 / Case-specific judgments
 <Bullet list of judgments not pre-decided by the strict-defaults table —
