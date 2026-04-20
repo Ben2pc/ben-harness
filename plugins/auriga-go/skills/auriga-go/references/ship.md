@@ -139,7 +139,7 @@ At each decision point the auriga workflow surfaces (see `CLAUDE.md` for the aut
 
 Decisions not in this table and not pre-decided by the spec → ambiguity → hard stop → `Blocked` exit. **Don't invent a ship default not listed here.**
 
-**Quick Development Flow exception**: CLAUDE.md 的 "Quick Development Flow" 条款（spec 小且无歧义）允许 brainstorming 与 planning 两个阶段整体跳过。当它适用时，上表里"Choosing a planning method"这一行对应的决策点**根本不会出现**，因此表里的 strict default 不做要求。Agent 应在 ship-Ready / ship-Blocked PR comment 的「自主决定」段里**显式记录**这条判断（例如 "Applied Quick Development Flow — planning phase skipped"），方便复核对到 CLAUDE.md 条款。
+**Quick Development Flow exception**: CLAUDE.md's "Quick Development Flow" clause (small scope, unambiguous spec) allows brainstorming and planning to be skipped wholesale. When it applies, the "Choosing a planning method" row above **does not surface as a decision point**, and the strict default does not apply. The Agent should **explicitly record** this judgment in the ship-Ready / ship-Blocked PR comment's `自主决定 / Autonomous decisions` section (e.g., "Applied Quick Development Flow — planning phase skipped") so reviewers can cross-reference the CLAUDE.md clause.
 
 ## Blocked exit
 
