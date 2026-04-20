@@ -115,7 +115,7 @@ The Stop hook + state file both survive `/clear` and compaction. Mid-ship `/clea
 All four must hold before emitting `<ship-done>Ready</ship-done>`:
 
 1. Tests pass (full `verification-before-completion`)
-2. In-Draft `deep-review` blocking findings are all **closed out** (fixed in the PR, or explicitly deferred to a follow-up issue per CLAUDE.md step 12)
+2. In-Draft `deep-review` blocking findings are all **closed out** (fixed in the PR, or explicitly deferred to a follow-up issue per CLAUDE.md's review-findings rule for high-risk architectural changes)
 3. **ship-Ready PR comment posted** (template below)
 4. PR flipped Draft → Ready
 
