@@ -31,6 +31,34 @@ function loadLock(packageRoot: string): SkillsLock {
   );
 }
 
+/**
+ * Group selected skills by source and build one `npx skills add` command
+ * per group. Same-source skills merge into a single `--skill a b c` list.
+ *
+ * Pure and deterministic: selection order is preserved; the first
+ * occurrence of each source fixes its position in the output.
+ */
+export function planSkillInstallCommands(
+  selected: string[],
+  lock: Record<string, { source: string }>,
+  globalFlag: string,
+): { source: string; skills: string[]; command: string }[] {
+  const bySource = new Map<string, string[]>();
+  for (const name of selected) {
+    const entry = lock[name];
+    if (!entry) continue;
+    const bucket = bySource.get(entry.source);
+    if (bucket) bucket.push(name);
+    else bySource.set(entry.source, [name]);
+  }
+
+  return [...bySource].map(([source, skills]) => ({
+    source,
+    skills,
+    command: `npx -y skills add ${source}${globalFlag} --skill ${skills.join(" ")} --agent claude-code codex --yes`,
+  }));
+}
+
 async function installSelected(
   entries: [string, { source: string }][],
   defaultChecked: boolean,
@@ -65,18 +93,15 @@ async function installSelected(
 
   const globalFlag = scope === "global" ? " -g" : "";
   const lock = Object.fromEntries(entries);
+  const batches = planSkillInstallCommands(selected, lock, globalFlag);
 
-  for (const name of selected) {
-    const entry = lock[name];
-    console.log(`\nInstalling ${name}...`);
+  for (const batch of batches) {
+    console.log(`\nInstalling ${batch.skills.join(", ")} from ${batch.source}...`);
     try {
-      exec(
-        `npx skills add ${entry.source}${globalFlag} --skill ${name} --agent claude-code codex --yes`,
-        { inherit: true },
-      );
-      log.ok(`${name}: installed`);
+      exec(batch.command, { inherit: true });
+      for (const name of batch.skills) log.ok(`${name}: installed`);
     } catch {
-      log.error(`${name}: failed to install`);
+      log.error(`${batch.source}: failed to install (${batch.skills.join(", ")})`);
     }
   }
 }
