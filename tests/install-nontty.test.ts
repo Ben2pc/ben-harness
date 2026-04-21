@@ -249,4 +249,35 @@ describe("main non-interactive install flow", () => {
     assert.equal(result, 0);
     assert.match(lastLine, /Reload your Claude Code session .* loaded at session startup/i);
   });
+  // Partial success (exit 2) must still print the reload reminder —
+  // categories that succeeded installed assets that require a session
+  // reload. Without this hint the user may retry the failed category
+  // and act on stale (pre-reload) state.
+  test("partial success still prints the reload reminder alongside the retry hint", async () => {
+    const main = await importMain({
+      installWorkflow: async () => {},
+      installSkills: async () => {},
+      installPlugins: async () => {
+        throw new Error("boom");
+      },
+      installHooks: async () => {},
+    });
+    const { result, stderr } = await captureStderr(() => main(["install", "--all"]));
+    assert.equal(result, 2);
+    assert.match(stderr, /Retry:\s+npx -y auriga-cli install plugins/i);
+    assert.match(stderr, /Reload your Claude Code session/i);
+  });
+  // Conversely, a full failure (no category succeeded → nothing was
+  // installed → nothing to reload) must NOT print the reload reminder.
+  test("full failure suppresses the reload reminder", async () => {
+    const main = await importMain({
+      installWorkflow: async () => { throw new Error("w"); },
+      installSkills: async () => { throw new Error("s"); },
+      installPlugins: async () => { throw new Error("p"); },
+      installHooks: async () => { throw new Error("h"); },
+    });
+    const { result, stderr } = await captureStderr(() => main(["install", "--all"]));
+    assert.equal(result, 2);
+    assert.doesNotMatch(stderr, /Reload your Claude Code session/i);
+  });
 });

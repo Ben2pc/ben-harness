@@ -484,6 +484,12 @@ async function runAll(p: InstallParsed): Promise<number> {
     const suffix = scopeCategory(s.category) ? scopeSuffix : "";
     process.stderr.write(`  npx -y auriga-cli install ${s.category}${suffix}\n`);
   }
+  // Partial success still installed assets that need a session reload
+  // (CLAUDE.md / skills / plugins load at startup). Without this hint
+  // the user may retry the failed category and act on stale state.
+  if (failed.length < status.length) {
+    process.stderr.write(RELOAD_REMINDER);
+  }
   return 2;
 }
 
