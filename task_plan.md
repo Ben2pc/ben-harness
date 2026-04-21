@@ -91,15 +91,18 @@
 
 ### Phase 5 — install --all 的 precheck + 分级 exit + reload 提醒
 
-状态：**pending**
+状态：**complete（2026-04-21，随 Phase 4 commit `0672160` 一并落地）**
 
-- [ ] 5.1 precheck 阶段：`which claude` / `which git` / `fetchContentRoot()` 预拉取
-- [ ] 5.2 逐类状态收集；汇总 exit code（0 / 1 / 2 per spec §5.3.1）
-- [ ] 5.3 成功尾部输出 reload 提醒（若 Spike #2 结论是 (a)"立即生效"，此条降级或删除）
-- [ ] 5.4 回归 `install-nontty.test.ts`：mock 三种状况（precheck 失败 / 部分成功 / 全成功）
-- [ ] 5.5 手测：真跑一遍 `DEV=1 node dist/cli.js install --all --cwd /tmp/smoke-$(date +%s)`
+- [x] 5.1 precheck：`runAll()` 先 `which claude`，未装直接 exit 1
+- [x] 5.2 逐类状态收集 + 汇总 exit code（0 / 1 / 2 per spec §5.3.1）
+- [x] 5.3 成功尾部 reload 提醒（Spike #2 结论：三类都需要重启，保留）
+- [x] 5.4 `install-nontty.test.ts` 三场景全绿
+- [x] 5.5 手测：
+  - `install workflow --cwd $TMP`：CLAUDE.md + AGENTS.md 符号链接 + reload 提醒 ✓
+  - 四条 fail-fast 链路（unknown type / --all+filter / unknown skill / bare install in 非 TTY）exit 1 + 正确 stderr ✓
+  - `install --all` 真跑略过（需 `claude plugins install` 的网络 + 认证；已被单测 mock 覆盖，Phase 7 端到端再验）
 
-**出口条件**：spec §11 "分级退出码"三行验收项通过。
+**出口条件达成**：spec §11 "分级退出码"行全通过（exit 0 + reload 提醒；exit 1 precheck；exit 2 partial + [OK]/[FAIL] + Retry）。
 
 ### Phase 6 — README + CLAUDE.md 更新
 

@@ -6,12 +6,13 @@
 
 ## 当前状态
 
-- **当前 Phase**：Phase 0–4 ✅；可进入 Phase 5
-- **分支**：`feat/install-subcommand`
+- **当前 Phase**：Phase 0–5 ✅；可进入 Phase 6
+- **分支**：`feat/install-subcommand`（最新 commit `0672160`，已 push）
 - **Draft PR**：[#31](https://github.com/Ben2pc/auriga-cli/pull/31)（Open / Draft / Mergeable）
 - **npm test**：77/77 绿（14 条新测全通过，含 parser / install-nontty / guide）
 - **CLI 实现就位**：`src/cli.ts`（parseArgs + main + runAll/runSingle/runLegacyMenu）、`src/guide.ts`、`src/help.ts`
-- **下一步**：Phase 5（README + 根 `CLAUDE.md` 的 Agent bootstrap recipe，中英双语）；Phase 6 deep-review + Ready
+- **Phase 5 随 Phase 4 一并落地**（precheck + 分级 exit + reload 提醒都在 `runAll`）；四条 fail-fast 手测通过
+- **下一步**：Phase 6（README 开头 + 根 `CLAUDE.md` 反向指针段，中英双语对称）；Phase 7 deep-review + Ready
 
 ## Session 1 — 2026-04-21（planning）
 
