@@ -59,29 +59,31 @@ async function main(): Promise<void> {
     return;
   }
 
+  const interactiveOpts = { interactive: true as const };
+
   if (moduleTypes.includes("workflow")) {
     console.log("\n--- Workflow ---\n");
-    await installWorkflow(packageRoot);
+    await installWorkflow(packageRoot, interactiveOpts);
   }
 
   if (moduleTypes.includes("skills")) {
     console.log("\n--- Skills ---\n");
-    await installSkills(packageRoot);
+    await installSkills(packageRoot, interactiveOpts);
   }
 
   if (moduleTypes.includes("recommended")) {
     console.log("\n--- Recommended Skills ---\n");
-    await installRecommendedSkills(packageRoot);
+    await installRecommendedSkills(packageRoot, interactiveOpts);
   }
 
   if (moduleTypes.includes("plugins")) {
     console.log("\n--- Plugins ---\n");
-    await installPlugins(packageRoot);
+    await installPlugins(packageRoot, interactiveOpts);
   }
 
   if (moduleTypes.includes("hooks")) {
     console.log("\n--- Hooks ---\n");
-    await installHooks(packageRoot);
+    await installHooks(packageRoot, interactiveOpts);
   }
 
   console.log("\n\u2728 Installation complete!\n");

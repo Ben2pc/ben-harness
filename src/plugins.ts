@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
-import type { PluginsConfig, PluginDef } from "./utils.js";
+import type { InstallOpts, PluginsConfig, PluginDef } from "./utils.js";
 
 interface PluginInfo {
   id: string;
@@ -32,6 +32,20 @@ function getInstalledPlugins(): Map<string, string[]> {
   }
 }
 
+/**
+ * Non-interactive selection resolver for plugins. Mirrors the skills
+ * resolveSelected: `undefined` / `["*"]` = full set; explicit names =
+ * filter. CLI parser validates names up-front.
+ */
+function resolvePluginSelection(
+  all: PluginDef[],
+  selected: string[] | undefined,
+): PluginDef[] {
+  if (!selected || (selected.length === 1 && selected[0] === "*")) return all;
+  const wanted = new Set(selected);
+  return all.filter((p) => wanted.has(p.name));
+}
+
 function getInstalledMarketplaces(): Set<string> {
   try {
     const output = exec("claude plugins marketplace list");
@@ -45,7 +59,10 @@ function getInstalledMarketplaces(): Set<string> {
   }
 }
 
-export async function installPlugins(packageRoot: string): Promise<void> {
+export async function installPlugins(
+  packageRoot: string,
+  opts: InstallOpts,
+): Promise<void> {
   // Check claude CLI availability
   try {
     exec("which claude");
@@ -69,28 +86,33 @@ export async function installPlugins(packageRoot: string): Promise<void> {
     return;
   }
 
-  const scope = await withEsc(select({
-    message: "Plugins installation scope:",
-    choices: [
-      { name: "User (user-level)", value: "user" as const },
-      { name: "Project (current project)", value: "project" as const },
-    ],
-  }));
+  type Scope = "project" | "user";
+  const scope: Scope = opts.interactive
+    ? await withEsc(select<Scope>({
+      message: "Plugins installation scope:",
+      choices: [
+        { name: "User (user-level)", value: "user" },
+        { name: "Project (current project)", value: "project" },
+      ],
+    }))
+    : opts.scope ?? "project";
 
   const installed = getInstalledPlugins();
 
-  const selected = await withEsc(checkbox({
-    message: "Select plugins to install:",
-    choices: config.plugins.map((p) => {
-      const scopes = installed.get(p.package);
-      const suffix = scopes ? ` (installed: ${scopes.join(", ")})` : "";
-      return {
-        name: `${p.name} — ${p.description}${suffix}`,
-        value: p,
-        checked: !scopes || !(scopes.includes("user") && scopes.includes("project")),
-      };
-    }),
-  }));
+  const selected = opts.interactive
+    ? await withEsc(checkbox({
+      message: "Select plugins to install:",
+      choices: config.plugins.map((p) => {
+        const scopes = installed.get(p.package);
+        const suffix = scopes ? ` (installed: ${scopes.join(", ")})` : "";
+        return {
+          name: `${p.name} — ${p.description}${suffix}`,
+          value: p,
+          checked: !scopes || !(scopes.includes("user") && scopes.includes("project")),
+        };
+      }),
+    }))
+    : resolvePluginSelection(config.plugins, opts.selected);
 
   if (selected.length === 0) {
     log.skip("No plugins selected");

@@ -31,6 +31,45 @@ export interface PluginsConfig {
   plugins: PluginDef[];
 }
 
+// --- Install options (spec §5.3) ---
+
+/**
+ * Shared install function argument shape. Each installer consumes the
+ * subset of fields meaningful to its category; irrelevant fields are
+ * ignored (e.g. `lang` / `cwd` only apply to workflow).
+ *
+ * `interactive` is required (no default) to force callers to be
+ * explicit — silently falling back to prompts in a piped Agent session
+ * was the original bug this spec closes.
+ */
+export interface InstallOpts {
+  /** workflow only — language code from `LANGUAGES`. */
+  lang?: string;
+  /** workflow only — install target directory (absolute or cwd-relative). */
+  cwd?: string;
+  /** skills / recommended / plugins — `"user"` means install globally. */
+  scope?: "project" | "user";
+  /**
+   * sub-item filter. `undefined` = full set of this category.
+   * Names are validated against the catalog by the CLI layer; installers
+   * take the list as authoritative.
+   */
+  selected?: string[];
+  /** `true` = drive via inquirer prompts (existing interactive UX);
+   *  `false` = non-interactive, use only the fields above. */
+  interactive: boolean;
+}
+
+/**
+ * Whether the current process should be treated as non-interactive.
+ * Used by the top-level CLI dispatcher to pick the interactive vs
+ * non-interactive code path when only the verb was supplied with no
+ * positional types / flags.
+ */
+export function isNonInteractive(): boolean {
+  return !process.stdin.isTTY;
+}
+
 // --- Package root ---
 
 export function getPackageRoot(): string {

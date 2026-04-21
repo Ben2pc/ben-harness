@@ -1,19 +1,32 @@
 import fs from "node:fs";
 import path from "node:path";
 import { input, select } from "@inquirer/prompts";
-import { LANGUAGES, fetchExtraContent, log, withEsc } from "./utils.js";
+import {
+  LANGUAGES,
+  fetchExtraContent,
+  log,
+  withEsc,
+  type InstallOpts,
+} from "./utils.js";
 
-export async function installWorkflow(packageRoot: string): Promise<void> {
-  const lang = await withEsc(select({
-    message: "CLAUDE.md language:",
-    choices: LANGUAGES.map((l) => ({ name: l.label, value: l.value })),
-    default: "en",
-  }));
+export async function installWorkflow(
+  packageRoot: string,
+  opts: InstallOpts,
+): Promise<void> {
+  const lang = opts.interactive
+    ? await withEsc(select({
+      message: "CLAUDE.md language:",
+      choices: LANGUAGES.map((l) => ({ name: l.label, value: l.value })),
+      default: "en",
+    }))
+    : (opts.lang ?? "en");
 
-  const targetDir = await withEsc(input({
-    message: "Workflow install target directory:",
-    default: process.cwd(),
-  }));
+  const targetDir = opts.interactive
+    ? await withEsc(input({
+      message: "Workflow install target directory:",
+      default: process.cwd(),
+    }))
+    : (opts.cwd ?? process.cwd());
 
   const resolved = path.resolve(targetDir);
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {

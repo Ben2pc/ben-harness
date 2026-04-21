@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
-import type { SkillEntry, SkillsLock } from "./utils.js";
+import type { InstallOpts, SkillEntry, SkillsLock } from "./utils.js";
 
 // Curated default-on set: skills that the workflow in the root CLAUDE.md
 // directly references. Anything else in skills-lock.json is surfaced via
@@ -19,11 +19,6 @@ const WORKFLOW_SKILLS = [
   "ui-ux-pro-max",
   "verification-before-completion",
 ];
-
-const RECOMMENDED_DESCRIPTIONS: Record<string, string> = {
-  "claude-code-agent": "Delegate tasks to another Claude Code CLI instance",
-  "codex-agent": "Delegate tasks to Codex CLI",
-};
 
 function loadLock(packageRoot: string): SkillsLock {
   return JSON.parse(
@@ -57,29 +52,36 @@ export function planSkillInstallCommands(
 async function installSelected(
   entries: [string, SkillEntry][],
   defaultChecked: boolean,
-  descriptionMap?: Record<string, string>,
+  opts: InstallOpts,
 ): Promise<void> {
   if (entries.length === 0) {
     log.warn("No skills found");
     return;
   }
 
-  const scope = await withEsc(select({
-    message: "Skills installation scope:",
-    choices: [
-      { name: "Project (current directory)", value: "project" as const },
-      { name: "Global (user-level)", value: "global" as const },
-    ],
-  }));
+  // scope mapping: spec §5.5 — outer `user` → internal `global`.
+  type Scope = "project" | "global";
+  const scope: Scope = opts.interactive
+    ? await withEsc(select<Scope>({
+      message: "Skills installation scope:",
+      choices: [
+        { name: "Project (current directory)", value: "project" },
+        { name: "Global (user-level)", value: "global" },
+      ],
+    }))
+    : opts.scope === "user" ? "global" : "project";
 
-  const selected = await withEsc(checkbox({
-    message: "Select skills to install:",
-    choices: entries.map(([name, entry]) => {
-      const desc = descriptionMap?.[name];
-      const label = desc ? `${name} — ${desc}` : `${name} (${entry.source})`;
-      return { name: label, value: name, checked: defaultChecked };
-    }),
-  }));
+  const availableNames = entries.map(([name]) => name);
+  const selected = opts.interactive
+    ? await withEsc(checkbox({
+      message: "Select skills to install:",
+      choices: entries.map(([name, entry]) => ({
+        name: `${name} (${entry.source})`,
+        value: name,
+        checked: defaultChecked,
+      })),
+    }))
+    : resolveSelected(opts.selected, availableNames);
 
   if (selected.length === 0) {
     log.skip("No skills selected");
@@ -101,20 +103,41 @@ async function installSelected(
   }
 }
 
-export async function installSkills(packageRoot: string): Promise<void> {
+/**
+ * Resolves the non-interactive `opts.selected` filter against the set
+ * of names available in the current category. Semantics match spec
+ * §3.2: `undefined` = all; `["*"]` = all; any other list = that list.
+ * The CLI parser is responsible for rejecting unknown names up-front
+ * (so installers can trust the list).
+ */
+function resolveSelected(
+  selected: string[] | undefined,
+  available: string[],
+): string[] {
+  if (!selected || (selected.length === 1 && selected[0] === "*")) {
+    return available;
+  }
+  return selected;
+}
+
+export async function installSkills(
+  packageRoot: string,
+  opts: InstallOpts,
+): Promise<void> {
   const lock = loadLock(packageRoot);
   const entries = Object.entries(lock.skills).filter(
     ([name]) => WORKFLOW_SKILLS.includes(name),
   );
-  await installSelected(entries, true);
+  await installSelected(entries, true, opts);
 }
 
 export async function installRecommendedSkills(
   packageRoot: string,
+  opts: InstallOpts,
 ): Promise<void> {
   const lock = loadLock(packageRoot);
   const entries = Object.entries(lock.skills).filter(
     ([name]) => !WORKFLOW_SKILLS.includes(name),
   );
-  await installSelected(entries, false, RECOMMENDED_DESCRIPTIONS);
+  await installSelected(entries, false, opts);
 }

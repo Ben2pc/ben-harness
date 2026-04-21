@@ -9,6 +9,7 @@ import {
   fetchExtraContentBinary,
   log,
   withEsc,
+  type InstallOpts,
 } from "./utils.js";
 
 // --- Hook registry types ---
@@ -847,7 +848,23 @@ export function cleanHookFromScope(
   return { removed: result.removed, settingsPath: r.settingsPath };
 }
 
-export async function installHooks(packageRoot: string): Promise<void> {
+/**
+ * Non-interactive selection resolver for hooks. Mirrors resolvePluginSelection:
+ * `undefined` / `["*"]` = full compatible set; explicit names = filter.
+ */
+function resolveHookSelection(
+  compatible: HookDef[],
+  selected: string[] | undefined,
+): HookDef[] {
+  if (!selected || (selected.length === 1 && selected[0] === "*")) return compatible;
+  const wanted = new Set(selected);
+  return compatible.filter((h) => wanted.has(h.name));
+}
+
+export async function installHooks(
+  packageRoot: string,
+  opts: InstallOpts,
+): Promise<void> {
   const config = loadHooksConfig(packageRoot);
 
   const compatible = config.hooks.filter((h) =>
@@ -860,33 +877,42 @@ export async function installHooks(packageRoot: string): Promise<void> {
     return;
   }
 
-  const selected = await withEsc(
-    checkbox<HookDef>({
-      message: "Select hooks to install:",
-      choices: compatible.map((h) => ({
-        name: `${h.name} — ${h.description}`,
-        value: h,
-        checked: true,
-      })),
-    }),
-  );
+  const selected = opts.interactive
+    ? await withEsc(
+      checkbox<HookDef>({
+        message: "Select hooks to install:",
+        choices: compatible.map((h) => ({
+          name: `${h.name} — ${h.description}`,
+          value: h,
+          checked: true,
+        })),
+      }),
+    )
+    : resolveHookSelection(compatible, opts.selected);
 
   if (selected.length === 0) {
     log.skip("No hooks selected");
     return;
   }
 
+  // Non-interactive default scope: "project-local" (map from opts.scope).
+  // `opts.scope === "user"` → "user"; anything else → "project-local".
+  const nonInteractiveScope: Scope =
+    opts.scope === "user" ? "user" : "project-local";
+
   // Lazily prompted on the first project-scoped hook, then reused. Users
   // who pick only "user" scope are never asked about a project directory.
   let projectBaseResolved: string | null = null;
   async function ensureProjectBase(): Promise<string | null> {
     if (projectBaseResolved !== null) return projectBaseResolved;
-    const projectBase = await withEsc(
-      input({
-        message: "Hooks install target directory:",
-        default: process.cwd(),
-      }),
-    );
+    const projectBase = opts.interactive
+      ? await withEsc(
+        input({
+          message: "Hooks install target directory:",
+          default: process.cwd(),
+        }),
+      )
+      : (opts.cwd ?? process.cwd());
     const resolvedPath = path.resolve(projectBase);
     if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isDirectory()) {
       log.error(`Not a valid directory: ${resolvedPath}`);
@@ -903,19 +929,23 @@ export async function installHooks(packageRoot: string): Promise<void> {
     // plugins.ts / skills.ts): a future user may want personal dev tools
     // at user level and project-specific hooks at project level. The
     // single-hook case is functionally identical to a single prompt.
-    const scope = await withEsc(
-      select<Scope>({
-        message: `Where to install the ${hook.name} hook?`,
-        choices: scopeChoices(),
-        default: "project-local",
-      }),
-    );
+    const scope: Scope = opts.interactive
+      ? await withEsc(
+        select<Scope>({
+          message: `Where to install the ${hook.name} hook?`,
+          choices: scopeChoices(),
+          default: "project-local",
+        }),
+      )
+      : nonInteractiveScope;
 
     // User scope mutates ~/.claude/settings.json — global, affects every
     // project on this machine. A passive select label and a one-line warn
     // both scroll past quickly. Make the user explicitly opt in to the
     // global mutation; default to "no" so a missed Enter is the safe path.
-    if (scope === "user") {
+    // In non-interactive mode the caller has already expressed intent via
+    // `--scope user`, so we honor it without another confirmation gate.
+    if (opts.interactive && scope === "user") {
       const proceed = await withEsc(
         confirm({
           message: `Modify your global ~/.claude/settings.json? This affects every project on this machine. A .bak snapshot is taken before any change.`,
@@ -939,17 +969,21 @@ export async function installHooks(packageRoot: string): Promise<void> {
     // Cross-scope cleanup: if this hook's marker is already present in a
     // *different* scope's settings file, leaving it there means the hook
     // will fire from both scopes. Detect, prompt, clean before installing.
+    // In non-interactive mode the default (remove stale) is applied
+    // silently — matches the interactive default: true.
     const stale = findStaleScopes(hook, scope, projectBaseForHook);
     for (const entry of stale) {
       log.warn(
         `Found existing ${hook.name} hook in ${relativeFromCwd(entry.settingsPath)} (${entry.scope} scope, ${entry.count} entr${entry.count === 1 ? "y" : "ies"})`,
       );
-      const remove = await withEsc(
-        confirm({
-          message: `Remove the stale registration so the hook only fires once?`,
-          default: true,
-        }),
-      );
+      const remove = opts.interactive
+        ? await withEsc(
+          confirm({
+            message: `Remove the stale registration so the hook only fires once?`,
+            default: true,
+          }),
+        )
+        : true;
       if (remove) {
         const cleaned = cleanHookFromScope(hook, entry.scope, projectBaseForHook);
         log.ok(`removed ${cleaned.removed} from ${relativeFromCwd(cleaned.settingsPath)}`);
