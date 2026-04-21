@@ -16,8 +16,9 @@ concurrency:
 
 jobs:
   claude-review:
-    # Skip Draft PRs and no-token runs (e.g. fork PRs without secrets).
-    if: github.event.pull_request.draft == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
+    # Skip Draft PRs and fork PRs (which can't access secrets).
+    # `secrets` context is not available in job-level `if:` — use the fork flag instead.
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.fork == false
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
