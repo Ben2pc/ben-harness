@@ -51,7 +51,7 @@ jobs:
           claude_args: >-
             --model claude-opus-4-7
             --allowed-tools
-            "Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/:*),Bash(rg:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(ls:*),Read,Grep,Glob"
+            "Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api:*),Bash(rg:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(ls:*),Read,Grep,Glob"
 
           # Expose the SDK tool-use stream in the Action log. Without
           # this, permission denials / tool call detail are hidden and
