@@ -11,9 +11,9 @@ This repo itself is a fully configured harness project. You can clone it to see 
 | Module | Description |
 |---|---|
 | **Workflow** | `CLAUDE.md` auriga workflow: requirement clarification -> TDD -> Review, Harness principles, Subagent usage guide |
-| **Skills** | Development process skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright |
-| **Recommended Skills** | Optional utility skills (e.g. `codex-agent`) you can add on top of the workflow skills |
-| **Plugins** | Recommended Claude Code plugins — skill-creator, claude-md-management, codex |
+| **Skills** | Development process + orchestration skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright, deep-review, test-designer, parallel-implementation, ui-ux-pro-max |
+| **Recommended Skills** | Optional utility skills (e.g. `codex-agent`, `claude-code-agent`) you can add on top of the workflow skills |
+| **Plugins** | Recommended Claude Code plugins — skill-creator, claude-md-management, codex, auriga-go |
 | **Hooks** | Claude Code hooks: `notify` (macOS notification, focus-aware sound-only when terminal is frontmost), `pr-create-guard` (PostToolUse body snapshot after `gh pr create`), `pr-ready-guard` (PreToolUse block on stray planning docs / active specs in `docs/specs/` / unpushed commits before `gh pr ready`) |
 
 ## Quick Start
@@ -39,7 +39,7 @@ npx -y auriga-cli install <type> [--flags]   # one of: workflow | skills | recom
 npx -y auriga-cli --help                     # full catalog + flags
 ```
 
-Exit codes: `0` success, `1` fatal (precheck / parse / fetch), `2` partial success — `stderr` lists per-category `[OK]/[FAIL]` and a `Retry:` hint. After install, reload the Claude Code session so the new `CLAUDE.md` / skills / plugins are picked up.
+Exit codes: `0` success, `1` fatal (precheck / parse / fetch), `2` partial success — `stderr` lists per-category `[OK]/[FAIL]` and a `Retry:` hint. After install, reload the Claude Code session so the new `CLAUDE.md` / skills / plugins / hook registrations are picked up.
 
 ### Interactive menu
 

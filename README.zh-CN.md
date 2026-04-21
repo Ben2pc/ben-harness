@@ -11,9 +11,9 @@
 | 模块 | 说明 |
 |---|---|
 | **Workflow** | `CLAUDE.md` 里的 auriga 工作流：需求澄清 → TDD → Review，Harness 原则，Subagent 使用指南 |
-| **Skills** | 开发流程 skills —— brainstorming、systematic-debugging、TDD、verification、planning、playwright |
-| **Recommended Skills** | 可选的工具类 skills（如 `codex-agent`），在 workflow skills 之外按需追加 |
-| **Plugins** | 推荐的 Claude Code 插件 —— skill-creator、claude-md-management、codex |
+| **Skills** | 开发流程 + 编排类 skills —— brainstorming、systematic-debugging、TDD、verification、planning、playwright、deep-review、test-designer、parallel-implementation、ui-ux-pro-max |
+| **Recommended Skills** | 可选的工具类 skills（如 `codex-agent`、`claude-code-agent`），在 workflow skills 之外按需追加 |
+| **Plugins** | 推荐的 Claude Code 插件 —— skill-creator、claude-md-management、codex、auriga-go |
 | **Hooks** | Claude Code hooks：`notify`（macOS 通知，终端在焦点时仅放声不弹横幅）、`pr-create-guard`（`gh pr create` 后注入 PR body 快照的 PostToolUse）、`pr-ready-guard`（`gh pr ready` 前按游离 planning 文档 / `docs/specs/` 内未清理的 spec / 未 push commits 拦截的 PreToolUse） |
 
 ## 快速开始
@@ -39,7 +39,7 @@ npx -y auriga-cli install <type> [--flags]   # 单类：workflow | skills | reco
 npx -y auriga-cli --help                     # 完整 catalog + flag 说明
 ```
 
-退出码：`0` 成功；`1` 致命错误（前置检查 / 解析 / 拉取失败）；`2` 部分成功——`stderr` 会列出逐类 `[OK]/[FAIL]` 和 `Retry:` 提示。装完后请重启 Claude Code session，让新的 `CLAUDE.md` / skills / plugins 生效。
+退出码：`0` 成功；`1` 致命错误（前置检查 / 解析 / 拉取失败）；`2` 部分成功——`stderr` 会列出逐类 `[OK]/[FAIL]` 和 `Retry:` 提示。装完后请重启 Claude Code session，让新的 `CLAUDE.md` / skills / plugins / hook 注册 生效。
 
 ### 交互式菜单
 

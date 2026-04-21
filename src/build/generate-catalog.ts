@@ -18,7 +18,23 @@ interface HooksConfig {
   hooks: HookEntry[];
 }
 
+/**
+ * English `--help` summaries for skills whose authoritative upstream
+ * SKILL.md is non-English. The SKILL.md still drives runtime behavior;
+ * this override only affects the one-line entry in `--help` so CI /
+ * English-speaking Agents get a consistent reading experience.
+ * Keep summaries ≤140 chars so the truncated help column stays tidy.
+ */
+const CATALOG_OVERRIDES: Record<string, string> = {
+  "claude-code-agent":
+    "Delegate coding, review, diagnosis, planning, and structured-output tasks to an independent Claude Code session via `claude -p` (Agent SDK).",
+  "codex-agent":
+    "Delegate coding, review, diagnosis, planning, and browser tasks to an independent Codex session via `codex exec` / resume / review.",
+};
+
 function readSkillDescription(repoRoot: string, name: string): string {
+  const override = CATALOG_OVERRIDES[name];
+  if (override) return override;
   const skillMd = path.join(repoRoot, ".agents", "skills", name, "SKILL.md");
   if (!fs.existsSync(skillMd)) {
     throw new Error(`generate-catalog: SKILL.md not found for '${name}' at ${skillMd}`);

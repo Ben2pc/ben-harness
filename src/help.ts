@@ -1,5 +1,5 @@
 import type { Catalog, CatalogEntry } from "./catalog.js";
-import type { CategoryName } from "./cli.js";
+import type { CategoryName } from "./types.js";
 
 /**
  * Renders the detailed `--help` output per spec §4. Agent-readable

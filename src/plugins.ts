@@ -4,6 +4,59 @@ import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
 import type { InstallOpts, PluginsConfig, PluginDef } from "./utils.js";
 
+// Plugin names, marketplace names/sources, and plugin-package names all
+// end up in `claude plugins ...` shell commands via string interpolation.
+// .claude/plugins.json is fetched from raw GitHub at runtime, so every
+// value must pass a conservative whitelist before composing the command.
+// Without this a compromised plugins.json would execute arbitrary
+// commands via shell metachar injection.
+const PLUGIN_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const PLUGIN_SOURCE_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
+const MARKETPLACE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const PLUGIN_PACKAGE_RE = /^[A-Za-z0-9][A-Za-z0-9._@/-]{0,255}$/;
+
+export function validatePluginsConfig(raw: unknown): asserts raw is PluginsConfig {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("plugins.json: root must be an object");
+  }
+  const cfg = raw as Record<string, unknown>;
+  if (!Array.isArray(cfg.plugins)) {
+    throw new Error("plugins.json: .plugins must be an array");
+  }
+  cfg.plugins.forEach((p, i) => {
+    if (!p || typeof p !== "object") {
+      throw new Error(`plugins.json: plugins[${i}] must be an object`);
+    }
+    const plugin = p as Record<string, unknown>;
+    if (typeof plugin.name !== "string" || !PLUGIN_NAME_RE.test(plugin.name)) {
+      throw new Error(
+        `plugins.json: plugins[${i}].name ${JSON.stringify(plugin.name)} does not match ${PLUGIN_NAME_RE}`,
+      );
+    }
+    if (typeof plugin.package !== "string" || !PLUGIN_PACKAGE_RE.test(plugin.package)) {
+      throw new Error(
+        `plugins.json: plugins[${i}].package ${JSON.stringify(plugin.package)} does not match ${PLUGIN_PACKAGE_RE}`,
+      );
+    }
+    if (plugin.marketplace !== undefined) {
+      if (!plugin.marketplace || typeof plugin.marketplace !== "object") {
+        throw new Error(`plugins.json: plugins[${i}].marketplace must be an object`);
+      }
+      const mp = plugin.marketplace as Record<string, unknown>;
+      if (typeof mp.name !== "string" || !MARKETPLACE_NAME_RE.test(mp.name)) {
+        throw new Error(
+          `plugins.json: plugins[${i}].marketplace.name ${JSON.stringify(mp.name)} does not match ${MARKETPLACE_NAME_RE}`,
+        );
+      }
+      if (typeof mp.source !== "string" || !PLUGIN_SOURCE_RE.test(mp.source)) {
+        throw new Error(
+          `plugins.json: plugins[${i}].marketplace.source ${JSON.stringify(mp.source)} does not match ${PLUGIN_SOURCE_RE}`,
+        );
+      }
+    }
+  });
+}
+
 interface PluginInfo {
   id: string;
   scope: string;
@@ -78,9 +131,9 @@ export async function installPlugins(
     return;
   }
 
-  const config: PluginsConfig = JSON.parse(
-    fs.readFileSync(configPath, "utf-8"),
-  );
+  const raw: unknown = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+  validatePluginsConfig(raw);
+  const config: PluginsConfig = raw;
 
   if (config.plugins.length === 0) {
     log.warn("No plugins defined in plugins.json");

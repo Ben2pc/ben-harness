@@ -105,7 +105,8 @@ bash tests/ship-loop.test.sh
 ## Versioning & Release
 
 - Version in `package.json` follows semver: patch for bugfixes, minor for new features, major for breaking changes.
-- Bump version before merging feature PRs. Publish: `npm publish`.
+- Bump version before merging feature PRs.
+- **Release flow (tag-then-publish)**: `fetchContentRoot` in `src/utils.ts` pins to the git tag `v<package.version>`. Cutting the tag BEFORE `npm publish` is mandatory — publishing first leaves users hitting a 404 on every fetch until the tag is pushed. Canonical sequence: bump `version` → merge → `git tag v<version> && git push origin v<version>` → `npm publish`. Set `AURIGA_CONTENT_REF=main` to bypass the tag pin (used in development).
 - **Two versions track independently**: `package.json` is the **CLI tool** version; the `CLAUDE.md` workflow header (e.g. `# auriga Workflow (v1.4.0)`) is the **workflow content** version. A CLI change may not touch the workflow; a workflow rewrite usually bumps both. Their divergence is intentional — don't treat it as a bug during review.
 
 ## Principles

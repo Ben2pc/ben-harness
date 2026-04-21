@@ -16,8 +16,8 @@
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
     "pretest": "npm run build",
-    "test": "tsc -p tsconfig.test.json && DEV=1 node --test --experimental-test-module-mocks dist-test/tests/hooks.test.js dist-test/tests/skills.test.js dist-test/tests/catalog.test.js dist-test/tests/cli-parse.test.js dist-test/tests/install-nontty.test.js dist-test/tests/guide.test.js",
-    "test:watch": "tsc -p tsconfig.test.json --watch & node --test --watch --experimental-test-module-mocks dist-test/tests/hooks.test.js dist-test/tests/skills.test.js dist-test/tests/catalog.test.js dist-test/tests/cli-parse.test.js dist-test/tests/install-nontty.test.js dist-test/tests/guide.test.js"
+    "test": "tsc -p tsconfig.test.json && DEV=1 node --test --experimental-test-module-mocks dist-test/tests/hooks.test.js dist-test/tests/skills.test.js dist-test/tests/catalog.test.js dist-test/tests/cli-parse.test.js dist-test/tests/install-nontty.test.js dist-test/tests/guide.test.js dist-test/tests/validators.test.js",
+    "test:watch": "tsc -p tsconfig.test.json --watch & node --test --watch --experimental-test-module-mocks dist-test/tests/hooks.test.js dist-test/tests/skills.test.js dist-test/tests/catalog.test.js dist-test/tests/cli-parse.test.js dist-test/tests/install-nontty.test.js dist-test/tests/guide.test.js dist-test/tests/validators.test.js"
   },
   "engines": {
     "node": ">=18"

@@ -20,10 +20,44 @@ export const WORKFLOW_SKILLS = [
   "verification-before-completion",
 ];
 
+// Skill names and npm-style sources are interpolated into the shell
+// command we hand to `exec()`. The lock file is fetched from raw GitHub
+// at runtime, so every value must pass a conservative whitelist before
+// we compose the command. Without this a compromised skills-lock.json
+// would execute arbitrary commands via shell metachar injection.
+const SKILL_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const SKILL_SOURCE_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
+
+export function validateSkillsLock(raw: unknown): asserts raw is SkillsLock {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("skills-lock.json: root must be an object");
+  }
+  const lock = raw as Record<string, unknown>;
+  if (!lock.skills || typeof lock.skills !== "object") {
+    throw new Error("skills-lock.json: .skills must be an object");
+  }
+  for (const [name, entry] of Object.entries(lock.skills as Record<string, unknown>)) {
+    if (!SKILL_NAME_RE.test(name)) {
+      throw new Error(`skills-lock.json: skill name ${JSON.stringify(name)} does not match ${SKILL_NAME_RE}`);
+    }
+    if (!entry || typeof entry !== "object") {
+      throw new Error(`skills-lock.json: .skills[${name}] must be an object`);
+    }
+    const src = (entry as Record<string, unknown>).source;
+    if (typeof src !== "string" || !SKILL_SOURCE_RE.test(src)) {
+      throw new Error(
+        `skills-lock.json: .skills[${name}].source ${JSON.stringify(src)} does not match ${SKILL_SOURCE_RE}`,
+      );
+    }
+  }
+}
+
 function loadLock(packageRoot: string): SkillsLock {
-  return JSON.parse(
+  const raw: unknown = JSON.parse(
     fs.readFileSync(path.join(packageRoot, "skills-lock.json"), "utf-8"),
   );
+  validateSkillsLock(raw);
+  return raw;
 }
 
 // Deterministic: selection order is preserved; the first occurrence of

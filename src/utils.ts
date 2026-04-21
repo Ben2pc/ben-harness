@@ -121,7 +121,37 @@ export const LANGUAGES: LangOption[] = [
 // --- Remote content ---
 
 const REPO = "Ben2pc/auriga-cli";
-const BRANCH = "main";
+
+/**
+ * Git ref to fetch content from. Defaults to the tag matching the
+ * published CLI version (`v<package.version>`) so a pinned npm install
+ * never drifts against `main`. Overridable via `AURIGA_CONTENT_REF`
+ * (CI / debugging) and auto-falls-back to `main` for the legacy
+ * behavior when `AURIGA_CONTENT_REF=main` or when the package version
+ * can't be read.
+ *
+ * Release discipline: cut the git tag `v<version>` BEFORE `npm
+ * publish`. Publishing without tagging would leave `fetchContentRoot`
+ * hitting a 404 for the first minutes until the tag exists.
+ */
+function resolveContentRef(): string {
+  const override = process.env.AURIGA_CONTENT_REF;
+  if (override && override.length > 0) return override;
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(getPackageRoot(), "package.json"), "utf-8"),
+    );
+    if (typeof pkg.version === "string" && /^\d+\.\d+\.\d+/.test(pkg.version)) {
+      return `v${pkg.version}`;
+    }
+  } catch {
+    // Fall through to main; getPackageRoot can legitimately fail in
+    // bizarre installs (broken tarball), and a live-main fetch is
+    // strictly better than a hard crash on `--help`.
+  }
+  return "main";
+}
+
 const CONTENT_FILES = [
   "CLAUDE.md",
   "skills-lock.json",
@@ -130,14 +160,16 @@ const CONTENT_FILES = [
 ];
 
 async function fetchFile(file: string): Promise<string> {
-  const url = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${file}`;
+  const ref = resolveContentRef();
+  const url = `https://raw.githubusercontent.com/${REPO}/${ref}/${file}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.text();
 }
 
 async function fetchFileBinary(file: string): Promise<Buffer> {
-  const url = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${file}`;
+  const ref = resolveContentRef();
+  const url = `https://raw.githubusercontent.com/${REPO}/${ref}/${file}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return Buffer.from(await res.arrayBuffer());

@@ -18,6 +18,8 @@ import { installHooks } from "./hooks.js";
 import { loadCatalog } from "./catalog.js";
 import { renderHelp, renderTypeHelp } from "./help.js";
 import { renderGuide } from "./guide.js";
+import { CATEGORY_NAMES, type CategoryName } from "./types.js";
+export type { CategoryName } from "./types.js";
 
 const RELOAD_REMINDER =
   "\n⚠ Reload your Claude Code session to pick up the new harness (CLAUDE.md / skills / plugins are loaded at session startup).\n";
@@ -25,8 +27,6 @@ const RELOAD_REMINDER =
 // ---------------------------------------------------------------------------
 // parseArgs — pure argv parser (spec §3.5 / §5.2)
 // ---------------------------------------------------------------------------
-
-export type CategoryName = "workflow" | "skills" | "recommended" | "plugins" | "hooks";
 
 export interface InstallParsed {
   all: boolean;
@@ -43,13 +43,7 @@ export type ParsedArgs =
   | { command: "guide" }
   | { command: "install"; install: InstallParsed };
 
-const CATEGORY_SET = new Set<CategoryName>([
-  "workflow",
-  "skills",
-  "recommended",
-  "plugins",
-  "hooks",
-]);
+const CATEGORY_SET = new Set<CategoryName>(CATEGORY_NAMES);
 
 const TYPE_FOR_FILTER = {
   "--skill": "skills",
@@ -393,25 +387,38 @@ async function safeFetchContentRoot(): Promise<{ root?: string; err?: string }> 
   }
 }
 
-async function runAll(p: InstallParsed): Promise<number> {
-  const pre = precheckExternal(["plugins"]);
+/**
+ * Shared precheck + fetch skeleton for every non-interactive install
+ * entry. Returns either a ready-to-use packageRoot or an exit code to
+ * bubble up. Keeps runAll / runSingle from drifting apart as new
+ * pre-install behavior accrues.
+ */
+async function prepareInstall(
+  needs: CategoryName[],
+): Promise<{ packageRoot: string } | { exit: number }> {
+  const pre = precheckExternal(needs);
   if (pre) {
     log.error(pre);
-    return 1;
+    return { exit: 1 };
   }
-
   const fetched = await safeFetchContentRoot();
   if (fetched.err) {
     log.error(fetched.err);
-    return 1;
+    return { exit: 1 };
   }
-  const packageRoot = fetched.root!;
+  return { packageRoot: fetched.root! };
+}
+
+async function runAll(p: InstallParsed): Promise<number> {
+  const prep = await prepareInstall(["plugins"]);
+  if ("exit" in prep) return prep.exit;
+  const { packageRoot } = prep;
 
   const status: { category: CategoryName; ok: boolean; err?: string }[] = [];
   for (const category of ALL_CATEGORIES) {
     // Forward `scope` only when the user actually passed one. Each
     // installer picks its own default for undefined so category-specific
-    // semantics (e.g. hooks' three-way user / project / project-local)
+    // defaults (skills/recommended/plugins/hooks all map undefined → project)
     // aren't flattened by a one-size-fits-all fallback here.
     const opts: InstallOpts = {
       interactive: false,
@@ -439,10 +446,10 @@ async function runAll(p: InstallParsed): Promise<number> {
     return 0;
   }
 
-  // Retry hint must carry `--scope` forward for any category where the
-  // spec-mapped flag applies (skills / recommended / plugins — see §3.2
-  // / §5.5). Dropping it silently retries into the default project
-  // scope and leaves the intended user-scope install incomplete.
+  // Retry hint must carry `--scope` forward for any scope-aware
+  // category (see scopeCategory). Dropping it silently retries into
+  // the default project scope and leaves the intended user-scope
+  // install incomplete.
   const scopeSuffix = p.scope ? ` --scope ${p.scope}` : "";
   process.stderr.write("\nRetry:\n");
   for (const s of failed) {
@@ -460,18 +467,9 @@ function scopeCategory(c: CategoryName): boolean {
 
 async function runSingle(p: InstallParsed): Promise<number> {
   const category = p.type as CategoryName;
-  const pre = precheckExternal(category === "plugins" ? ["plugins"] : []);
-  if (pre) {
-    log.error(pre);
-    return 1;
-  }
-
-  const fetched = await safeFetchContentRoot();
-  if (fetched.err) {
-    log.error(fetched.err);
-    return 1;
-  }
-  const packageRoot = fetched.root!;
+  const prep = await prepareInstall(category === "plugins" ? ["plugins"] : []);
+  if ("exit" in prep) return prep.exit;
+  const { packageRoot } = prep;
 
   const opts: InstallOpts = {
     interactive: false,

@@ -171,35 +171,52 @@ Verify:
 
 If `claude` is missing: install Claude Code first, then re-run this guide.
 
-## Step 2 — Install harness
+## Step 2 — Read --help BEFORE installing (do not skip)
 
-Full install (workflow + skills + plugins + hooks):
+⚠ Always inspect the catalog first.
+
+Top-level catalog (every workflow skill / recommended skill / plugin /
+hook with a short description):
+  npx -y auriga-cli --help
+
+Per-type detail (flags + only that category's catalog slice):
+  npx -y auriga-cli install workflow --help
+  npx -y auriga-cli install skills --help
+  npx -y auriga-cli install recommended --help
+  npx -y auriga-cli install plugins --help
+  npx -y auriga-cli install hooks --help
+
+## Step 3 — Install
+
+Preset — the full default-on set (workflow + skills + plugins + hooks;
+recommended is NOT included):
   npx -y auriga-cli install --all
 
-(The leading `-y` is npx's flag; it suppresses npx's "is it OK to
-install this package?" prompt. Required for non-interactive sessions.)
+Targeted — single category:
+  npx -y auriga-cli install workflow --lang en
+  npx -y auriga-cli install skills --skill brainstorming test-driven-development
+  npx -y auriga-cli install plugins --plugin skill-creator codex --scope user
+  npx -y auriga-cli install hooks --hook pr-ready-guard
 
-Exit codes:
-  0  — all categories installed
-  1  — fatal error (parse / fetch / missing prerequisite). Read stderr;
-       fix the root cause and re-run the SAME command.
-  2  — partial success. stderr lists per-category status. Retry only the
-       failed category, e.g.:
-         npx -y auriga-cli install plugins
-         npx -y auriga-cli install hooks
+Opt-in hooks (e.g. notify — macOS-only + brew deps) require naming them
+explicitly:
+  npx -y auriga-cli install hooks --hook notify
 
-## Step 3 — (Optional) Install recommended skills
-
-Opt-in utility skills (claude-code-agent, codex-agent — cross-model
-delegation helpers):
+Opt-in recommended skills:
   npx -y auriga-cli install recommended
 
-Skip if you don't need cross-model delegation.
+Exit codes:
+  0  — all requested categories installed
+  1  — fatal error (parse / fetch / missing prerequisite). Read stderr;
+       fix the root cause and re-run the SAME command.
+  2  — partial success. stderr lists per-category status + a Retry:
+       block naming only the failed category(ies).
 
 ## Step 4 — Reload session (REQUIRED when installed non-interactively)
 
 `CLAUDE.md`, `.agents/skills/`, `.claude/plugins.json`, and hook
-registrations are loaded at Claude Code session startup. If you ran
+registrations (`.claude/settings.json`) are all loaded at Claude Code
+session startup. If you ran
 `npx -y auriga-cli install` inside an existing Claude Code session
 (e.g., `claude -p` / `claude -p --worktree`), **the current session
 will NOT see the new harness.**
@@ -217,11 +234,6 @@ Expected artifacts:
   - .agents/skills/<name>/    (one per installed skill)
   - .claude/plugins.json
   - .claude/settings.json     (updated hook registrations, if hooks selected)
-
-## Catalog (for finer control)
-
-For per-skill / per-plugin descriptions to decide what to install:
-  npx -y auriga-cli --help
 
 ## Troubleshooting
 

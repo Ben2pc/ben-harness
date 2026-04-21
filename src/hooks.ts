@@ -1060,6 +1060,10 @@ export async function installHooks(
     if (result.settingsError) {
       log.error(`${hook.name}: ${result.settingsError}`);
       log.warn(`Files were copied to ${dirRel} but settings not updated. Add the hook entry manually if you want it active.`);
+      // Registration failure leaves the hook installed-but-inactive. Count
+      // it as a failure so non-interactive `install hooks` exits 2 and the
+      // caller can retry — quietly reporting success would ship a dead hook.
+      failures.push(hook.name);
     } else if (result.settingsMutated) {
       log.ok(`registered in ${settingsRel}`);
     } else {
