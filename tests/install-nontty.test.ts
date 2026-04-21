@@ -25,10 +25,11 @@ async function importMain(overrides: {
   exec?: (cmd: string) => string;
   fetchContentRoot?: () => Promise<string>;
   isNonInteractive?: () => boolean;
-  installWorkflow?: () => Promise<void>;
-  installSkills?: () => Promise<void>;
-  installPlugins?: () => Promise<void>;
-  installHooks?: () => Promise<void>;
+  installWorkflow?: (packageRoot: string, opts: { scope?: string }) => Promise<void>;
+  installSkills?: (packageRoot: string, opts: { scope?: string }) => Promise<void>;
+  installPlugins?: (packageRoot: string, opts: { scope?: string }) => Promise<void>;
+  installHooks?: (packageRoot: string, opts: { scope?: string }) => Promise<void>;
+  loadCatalog?: () => unknown;
 } = {}) {
   mock.module(new URL("../src/utils.js", import.meta.url), {
     namedExports: {
@@ -50,7 +51,7 @@ async function importMain(overrides: {
     },
   });
   mock.module(new URL("../src/catalog.js", import.meta.url), {
-    namedExports: { loadCatalog: () => CATALOG },
+    namedExports: { loadCatalog: overrides.loadCatalog ?? (() => CATALOG) },
   });
   mock.module(new URL("../src/workflow.js", import.meta.url), {
     namedExports: { installWorkflow: overrides.installWorkflow ?? (async () => {}) },
@@ -128,12 +129,79 @@ describe("main non-interactive install flow", () => {
     assert.match(stderr, /\[OK\]\s+skills/i);
     assert.match(stderr, /\[FAIL\]\s+plugins.*claude CLI error: boom/i);
     assert.match(stderr, /\[OK\]\s+hooks/i);
-    assert.match(stderr, /Retry:\s+npx auriga-cli install plugins/i);
+    assert.match(stderr, /Retry:\s+npx -y auriga-cli install plugins/i);
+  });
+  // Covers codex deep-review finding #1: install paths must fail-fast when
+  // dist/catalog.json is missing (§7 / §11), not silently proceed. guide
+  // and --version must NOT require the catalog — they're usable before
+  // any build.
+  test("install path fails fast with 'catalog missing' when catalog is gone", async () => {
+    const main = await importMain({
+      loadCatalog: () => {
+        throw new Error("catalog missing at /x/dist/catalog.json. Run 'npm run build' or reinstall the package.");
+      },
+    });
+    const { result, stderr } = await captureStderr(() => main(["install", "--all"]));
+    assert.equal(result, 1);
+    assert.match(stderr, /catalog missing/i);
+  });
+  test("guide and --version do NOT require the catalog", async () => {
+    const main = await importMain({
+      loadCatalog: () => {
+        throw new Error("catalog missing at /x/dist/catalog.json. Run 'npm run build' or reinstall the package.");
+      },
+    });
+    // guide prints to stdout (not captured by captureStderr) — we just
+    // need exit 0, which proves the catalog wasn't touched.
+    const guide = await captureStderr(() => main(["guide"]));
+    assert.equal(guide.result, 0);
+    const version = await captureStderr(() => main(["--version"]));
+    assert.equal(version.result, 0);
   });
   // Covers the P2 regression from PR #31 codex review: retry hint for
   // `install --all --scope user` must preserve `--scope user`, otherwise
   // users following the hint silently install into the default project
   // scope and the intended user-scope install stays incomplete.
+  // Covers codex deep-review finding #2: hooks' non-interactive scope map
+  // must distinguish "user didn't pass --scope" (→ project-local, matching
+  // the interactive default) from "user explicitly passed --scope project"
+  // (→ project, i.e. .claude/settings.json, the SHARED config). The prior
+  // wiring collapsed both cases to project-local, so `install --all --scope
+  // project` silently wrote to settings.local.json and users who shipped
+  // the repo expecting teammates to pick up the hook got nothing.
+  test("hooks scope: undefined → installer sees undefined (hooks maps to project-local)", async () => {
+    const seen: { scope?: string }[] = [];
+    const main = await importMain({
+      installHooks: async (_root, opts) => {
+        seen.push({ scope: opts.scope });
+      },
+    });
+    const { result } = await captureStderr(() => main(["install", "--all"]));
+    assert.equal(result, 0);
+    assert.deepEqual(seen, [{ scope: undefined }]);
+  });
+  test("hooks scope: --scope project → installer sees 'project' (not 'project-local')", async () => {
+    const seen: { scope?: string }[] = [];
+    const main = await importMain({
+      installHooks: async (_root, opts) => {
+        seen.push({ scope: opts.scope });
+      },
+    });
+    const { result } = await captureStderr(() => main(["install", "--all", "--scope", "project"]));
+    assert.equal(result, 0);
+    assert.deepEqual(seen, [{ scope: "project" }]);
+  });
+  test("hooks scope: --scope user → installer sees 'user'", async () => {
+    const seen: { scope?: string }[] = [];
+    const main = await importMain({
+      installHooks: async (_root, opts) => {
+        seen.push({ scope: opts.scope });
+      },
+    });
+    const { result } = await captureStderr(() => main(["install", "--all", "--scope", "user"]));
+    assert.equal(result, 0);
+    assert.deepEqual(seen, [{ scope: "user" }]);
+  });
   test("retry hint preserves --scope when runAll was invoked with non-default scope", async () => {
     const main = await importMain({
       installWorkflow: async () => {},
@@ -147,7 +215,7 @@ describe("main non-interactive install flow", () => {
       main(["install", "--all", "--scope", "user"]),
     );
     assert.equal(result, 2);
-    assert.match(stderr, /Retry:\s+npx auriga-cli install plugins --scope user/i);
+    assert.match(stderr, /Retry:\s+npx -y auriga-cli install plugins --scope user/i);
   });
   // Covers spec §7 success-tail reload reminder and §11 full-install success acceptance.
   test("prints the reload reminder as the final stderr line on success", async () => {

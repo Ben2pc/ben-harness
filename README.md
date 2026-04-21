@@ -12,7 +12,7 @@ This repo itself is a fully configured harness project. You can clone it to see 
 |---|---|
 | **Workflow** | `CLAUDE.md` auriga workflow: requirement clarification -> TDD -> Review, Harness principles, Subagent usage guide |
 | **Skills** | Development process skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright |
-| **Recommended Skills** | Optional utility skills (e.g. `ui-ux-pro-max`) you can add on top of the workflow skills |
+| **Recommended Skills** | Optional utility skills (e.g. `codex-agent`) you can add on top of the workflow skills |
 | **Plugins** | Recommended Claude Code plugins — skill-creator, claude-md-management, codex |
 | **Hooks** | Claude Code hooks: `notify` (macOS notification, focus-aware sound-only when terminal is frontmost), `pr-create-guard` (PostToolUse body snapshot after `gh pr create`), `pr-ready-guard` (PreToolUse block on stray planning docs / active specs in `docs/specs/` / unpushed commits before `gh pr ready`) |
 

@@ -12,7 +12,7 @@
 |---|---|
 | **Workflow** | `CLAUDE.md` 里的 auriga 工作流：需求澄清 → TDD → Review，Harness 原则，Subagent 使用指南 |
 | **Skills** | 开发流程 skills —— brainstorming、systematic-debugging、TDD、verification、planning、playwright |
-| **Recommended Skills** | 可选的工具类 skills（如 `ui-ux-pro-max`），在 workflow skills 之外按需追加 |
+| **Recommended Skills** | 可选的工具类 skills（如 `codex-agent`），在 workflow skills 之外按需追加 |
 | **Plugins** | 推荐的 Claude Code 插件 —— skill-creator、claude-md-management、codex |
 | **Hooks** | Claude Code hooks：`notify`（macOS 通知，终端在焦点时仅放声不弹横幅）、`pr-create-guard`（`gh pr create` 后注入 PR body 快照的 PostToolUse）、`pr-ready-guard`（`gh pr ready` 前按游离 planning 文档 / `docs/specs/` 内未清理的 spec / 未 push commits 拦截的 PreToolUse） |
 

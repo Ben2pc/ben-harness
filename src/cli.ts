@@ -8,6 +8,7 @@ import {
   getPackageRoot,
   isNonInteractive,
   LANGUAGES,
+  log,
   type InstallOpts,
 } from "./utils.js";
 import { installWorkflow } from "./workflow.js";
@@ -140,6 +141,12 @@ function parseInstall(argv: string[]): InstallParsed {
     }
 
     if (t in TYPE_FOR_FILTER) {
+      if (filterFlag !== null) {
+        // A second filter flag on the same install line used to silently
+        // overwrite the first. Fail-fast so the user notices — one
+        // install invocation gets one filter list.
+        parseErr(`repeated ${t}: pass one ${t} list per install.`);
+      }
       const [values, next] = consumeFilter(argv, i + 1);
       if (values.length === 0) {
         parseErr(`${t} requires at least one name (or '*' for all).`);
@@ -274,7 +281,7 @@ export async function main(argv: string[]): Promise<number> {
   try {
     parsed = parseArgs(argv);
   } catch (e) {
-    process.stderr.write(`${(e as Error).message}\n`);
+    log.error((e as Error).message);
     return 1;
   }
 
@@ -286,7 +293,7 @@ export async function main(argv: string[]): Promise<number> {
       process.stdout.write(renderHelp(catalog, version));
       return 0;
     } catch (e) {
-      process.stderr.write(`${(e as Error).message}\n`);
+      log.error((e as Error).message);
       return 1;
     }
   }
@@ -302,7 +309,17 @@ export async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  // install
+  // install — catalog is required for filter validation and for the TTY
+  // menu's category descriptions; fail-fast at entry rather than produce
+  // a cryptic error mid-dispatch (spec §7 / §11 acceptance).
+  // guide / --version deliberately skip this check — both are usable
+  // before any build.
+  try {
+    loadCatalog(getPackageRoot());
+  } catch (e) {
+    log.error((e as Error).message);
+    return 1;
+  }
   return runInstall(parsed.install);
 }
 
@@ -310,8 +327,8 @@ async function runInstall(p: InstallParsed): Promise<number> {
   // Bare `install` (no type, no --all, no filter): TTY → menu, non-TTY → exit 1.
   if (!p.all && !p.type) {
     if (isNonInteractive()) {
-      process.stderr.write(
-        "Interactive mode requires a TTY. Run 'npx auriga-cli --help' for non-interactive options.\n",
+      log.error(
+        "Interactive mode requires a TTY. Run 'npx auriga-cli --help' for non-interactive options.",
       );
       return 1;
     }
@@ -352,22 +369,26 @@ async function safeFetchContentRoot(): Promise<{ root?: string; err?: string }> 
 async function runAll(p: InstallParsed): Promise<number> {
   const pre = precheckExternal(["plugins"]);
   if (pre) {
-    process.stderr.write(`${pre}\n`);
+    log.error(pre);
     return 1;
   }
 
   const fetched = await safeFetchContentRoot();
   if (fetched.err) {
-    process.stderr.write(`${fetched.err}\n`);
+    log.error(fetched.err);
     return 1;
   }
   const packageRoot = fetched.root!;
 
   const status: { category: CategoryName; ok: boolean; err?: string }[] = [];
   for (const category of ALL_CATEGORIES) {
+    // Forward `scope` only when the user actually passed one. Each
+    // installer picks its own default for undefined so category-specific
+    // semantics (e.g. hooks' three-way user / project / project-local)
+    // aren't flattened by a one-size-fits-all fallback here.
     const opts: InstallOpts = {
       interactive: false,
-      scope: p.scope ?? "project",
+      scope: p.scope,
     };
     try {
       await dispatchInstaller(category, packageRoot, opts);
@@ -399,7 +420,7 @@ async function runAll(p: InstallParsed): Promise<number> {
   process.stderr.write("\nRetry:\n");
   for (const s of failed) {
     const suffix = scopeCategory(s.category) ? scopeSuffix : "";
-    process.stderr.write(`  npx auriga-cli install ${s.category}${suffix}\n`);
+    process.stderr.write(`  npx -y auriga-cli install ${s.category}${suffix}\n`);
   }
   return 2;
 }
@@ -414,13 +435,13 @@ async function runSingle(p: InstallParsed): Promise<number> {
   const category = p.type as CategoryName;
   const pre = precheckExternal(category === "plugins" ? ["plugins"] : []);
   if (pre) {
-    process.stderr.write(`${pre}\n`);
+    log.error(pre);
     return 1;
   }
 
   const fetched = await safeFetchContentRoot();
   if (fetched.err) {
-    process.stderr.write(`${fetched.err}\n`);
+    log.error(fetched.err);
     return 1;
   }
   const packageRoot = fetched.root!;
@@ -429,7 +450,7 @@ async function runSingle(p: InstallParsed): Promise<number> {
     interactive: false,
     lang: p.lang,
     cwd: p.cwd,
-    scope: p.scope ?? "project",
+    scope: p.scope,
     selected: p.filter,
   };
 
@@ -438,7 +459,7 @@ async function runSingle(p: InstallParsed): Promise<number> {
     process.stderr.write(RELOAD_REMINDER);
     return 0;
   } catch (e) {
-    process.stderr.write(`${(e as Error).message}\n`);
+    log.error((e as Error).message);
     return 1;
   }
 }

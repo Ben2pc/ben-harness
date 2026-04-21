@@ -434,6 +434,17 @@ function resolveScope(scope: Scope, projectBase: string, hookName: string): Scop
   };
 }
 
+/**
+ * Three-way scope map for the non-interactive install path (§5.5).
+ * Exported only so `tests/hooks.test.ts` can lock the contract down as
+ * a unit test — not intended as a general-purpose helper.
+ */
+export function mapNonInteractiveScope(scope: string | undefined): Scope {
+  if (scope === "user") return "user";
+  if (scope === "project") return "project";
+  return "project-local";
+}
+
 function scopeChoices(): { name: string; value: Scope }[] {
   return [
     {
@@ -895,10 +906,17 @@ export async function installHooks(
     return;
   }
 
-  // Non-interactive default scope: "project-local" (map from opts.scope).
-  // `opts.scope === "user"` → "user"; anything else → "project-local".
-  const nonInteractiveScope: Scope =
-    opts.scope === "user" ? "user" : "project-local";
+  // Non-interactive scope map — three distinct outcomes:
+  //   undefined       → project-local (interactive default; the user
+  //                     didn't declare intent, fall back to the same
+  //                     personal-dev scope the TTY menu picks)
+  //   "project"       → project       (shared .claude/settings.json —
+  //                     commits travel with the repo)
+  //   "user"          → user          (~/.claude/settings.json — global)
+  // Earlier revisions collapsed "project" into "project-local", so
+  // `install --all --scope project` silently landed in settings.local
+  // .json and teammates pulling the branch never picked up the hook.
+  const nonInteractiveScope: Scope = mapNonInteractiveScope(opts.scope);
 
   // Lazily prompted on the first project-scoped hook, then reused. Users
   // who pick only "user" scope are never asked about a project directory.

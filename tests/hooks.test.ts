@@ -12,6 +12,7 @@ import {
   findStaleScopes,
   installHook,
   loadHooksConfig,
+  mapNonInteractiveScope,
   removeHookFromSettings,
 } from "../src/hooks.js";
 import type { HookDef, HookDep, SettingsFile } from "../src/hooks.js";
@@ -804,4 +805,27 @@ describe("depBinary", () => {
       assert.equal(depBinary(dep), expected);
     });
   }
+});
+
+// Covers codex deep-review finding #2: the three-way scope map for the
+// non-interactive install path must distinguish "no --scope passed"
+// (→ project-local, matching the interactive default) from "--scope
+// project" (→ project, shared .claude/settings.json). Earlier code
+// collapsed both cases to project-local, silently landing shared hooks
+// in settings.local.json.
+describe("mapNonInteractiveScope", () => {
+  test("undefined → project-local (matches interactive menu default)", () => {
+    assert.equal(mapNonInteractiveScope(undefined), "project-local");
+  });
+  test("'project' → project (SHARED settings.json — the whole point)", () => {
+    assert.equal(mapNonInteractiveScope("project"), "project");
+  });
+  test("'user' → user (global ~/.claude/settings.json)", () => {
+    assert.equal(mapNonInteractiveScope("user"), "user");
+  });
+  test("unknown string → project-local (safe default, not a throw)", () => {
+    // CLI parser validates --scope against a whitelist, so this path
+    // is defense-in-depth; stay silent instead of exploding.
+    assert.equal(mapNonInteractiveScope("weird"), "project-local");
+  });
 });

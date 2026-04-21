@@ -336,7 +336,11 @@ export function printBanner(version: string): void {
 
 export const log = {
   ok: (msg: string) => console.log(`${green}\u2713${reset} ${msg}`),
-  warn: (msg: string) => console.log(`${yellow}\u26a0${reset} ${msg}`),
-  error: (msg: string) => console.log(`${red}\u2717${reset} ${msg}`),
+  // warn / error go to stderr so shell redirection (and non-interactive
+  // agents) can separate diagnostics from normal CLI output. Earlier
+  // both wrote to stdout via console.log, which collapsed the two
+  // streams and forced callers to re-parse mixed output.
+  warn: (msg: string) => console.error(`${yellow}\u26a0${reset} ${msg}`),
+  error: (msg: string) => console.error(`${red}\u2717${reset} ${msg}`),
   skip: (msg: string) => console.log(`${dim}  skip: ${msg}${reset}`),
 };

@@ -141,4 +141,19 @@ describe("parseArgs", () => {
     );
     expectParseError(["install", "plugins", "--plugin"], /--plugin requires at least one name/i);
   });
+
+  // Covers codex deep-review finding #3: a repeated filter flag silently
+  // overwrote earlier values, which is surprising and arguably a rule-1
+  // ("one --skill list per install") violation. Fail-fast with a clear
+  // message so the user sees the intent mismatch up front.
+  test("rejects a repeated filter flag on the same install line", () => {
+    expectParseError(
+      ["install", "skills", "--skill", "a", "--skill", "b"],
+      /--skill .* already (set|given)|repeated.*--skill/i,
+    );
+    expectParseError(
+      ["install", "plugins", "--plugin", "a", "--plugin", "b"],
+      /--plugin .* already (set|given)|repeated.*--plugin/i,
+    );
+  });
 });
