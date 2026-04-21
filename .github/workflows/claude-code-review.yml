@@ -43,9 +43,47 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
+
+          # Opus for deeper reasoning. The default (sonnet-4-6) produces
+          # shallow reviews on non-trivial PRs — an earlier run on PR #31
+          # surfaced 1 finding versus 11 from a locally-driven codex
+          # deep-review over the same diff.
+          claude_args: >-
+            --model claude-opus-4-7
+            --allowed-tools
+            "Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(rg:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(ls:*),Read,Grep,Glob"
+
+          # Expose the SDK tool-use stream in the Action log. Without
+          # this, permission denials / tool call detail are hidden and
+          # you can't tell why a review went shallow.
+          show_full_output: 'true'
+
+          # 7-dimension deep-review skeleton — required sections +
+          # explicit finding format prevent the model from bailing early
+          # after one "safe" observation. Mirrors the contract our local
+          # /deep-review skill enforces for orchestration reviews.
+          prompt: |
+            You are reviewing PR #${{ github.event.pull_request.number }} on ${{ github.repository }}.
+            Run `gh pr view ${{ github.event.pull_request.number }}` and `gh pr diff ${{ github.event.pull_request.number }}` first for full context. Read related source files as needed.
+
+            Post your review as ONE top-level comment on the PR (use `gh pr comment` or the Github MCP equivalent). Format requirements:
+
+            - EXACTLY seven sections, in order:
+              1. **Correctness** — logic errors, broken fail-fast paths, off-by-one, contract mismatches
+              2. **Security** — injection, secret leakage, unsafe deserialization, auth bypass, shell quoting
+              3. **Edge cases** — exception inputs, concurrency, resource cleanup, error paths
+              4. **Consistency** — naming, style, existing project patterns, stale comments, leftover refactoring debt
+              5. **Documentation sync** — README / CLAUDE.md / spec drift caused by the diff
+              6. **Engineering structure** — file layout, import direction, layering, circular deps, blast radius
+              7. **Maintainability** — naming clarity, comment quality, duplicated logic, premature abstraction
+            - Each section: ≤200 words summary + bullet list of findings
+            - Each finding: `<file>:<line> — <one-line description> — [severity: blocking | non-blocking]`
+            - If no issues in a section, write exactly: `No findings.`
+            - End with ONE summary line: `OVERALL: <N blocking> / <M non-blocking>`
+            - Do NOT restate the diff; do NOT include code excerpts longer than 5 lines
+
+            Complete all 7 sections in a single response. Do not explore and stop — synthesize into the final comment before your turn ends.
+
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
