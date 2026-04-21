@@ -528,6 +528,33 @@ else
   finish_ok
 fi
 
+# ---- 21. stray raw control char before marker → marker still detected ----
+# Claude Code has been observed to write raw ANSI / control bytes (U+0000-
+# U+001F, notably ESC 0x1B) into transcript text blocks. `jq -c` — used
+# as the first filter step — aborts on the first row with a bare control
+# char and drops every subsequent row, which would otherwise strand the
+# marker row and force the hook into the normal re-feed path instead of
+# exit. Regression guard: if a stray-ESC row sits *before* the marker
+# row, the hook must still detect the marker.
+start "raw control char before marker → marker still detected"
+make_state 3 30
+# Row 1: stray ESC inside a text block (not JSON-escaped — literal byte).
+# printf emits the raw 0x1B byte; the surrounding JSON is otherwise valid.
+printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"before \x1b[31mred\x1b[0m after"}]}}\n' > ./transcript.jsonl
+# Row 2: clean marker-bearing assistant text.
+printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"<ship-done>Ready</ship-done>"}]}}\n' >> ./transcript.jsonl
+stdout=$(make_hook_input ./transcript.jsonl | run_hook)
+rc=$?
+if [[ $rc -ne 0 ]]; then
+  finish_fail "expected exit 0, got $rc (stderr: $(cat stderr.log))"
+elif [[ -f .claude/auriga-go-ship.local.md ]]; then
+  finish_fail "state file should have been removed — marker buried behind stray ESC. stderr: $(cat stderr.log)"
+elif ! grep -q 'detected <ship-done>Ready</ship-done>' stderr.log; then
+  finish_fail "expected Ready detection in stderr, got: $(cat stderr.log)"
+else
+  finish_ok
+fi
+
 # ---- summary ----
 
 echo ""

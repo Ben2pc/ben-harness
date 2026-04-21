@@ -84,11 +84,23 @@ fi
 #
 # Real Claude Code transcripts use `.type == "assistant"` at the top level
 # (not `.role`); `.message.role` is nested inside. Using `.type` is correct.
+#
+# Why the perl pre-pass: Claude Code has been observed to write raw ANSI /
+# control bytes (U+0000-U+001F, notably ESC 0x1B) into transcript text
+# blocks. `jq -c` treats a bare control byte inside a JSON string as a
+# hard parse error and **aborts at that row, dropping every subsequent
+# row** — which would otherwise strand the marker behind a stray-ESC
+# row and silently force the hook into the normal re-feed path. Stripping
+# the offending bytes before parsing keeps jq's behavior intact for
+# well-formed rows while restoring marker detection past the bad row.
+# `\t` (0x09), `\n` (0x0A), and `\r` (0x0D) are preserved because they're
+# valid inside JSON-decoded strings and we don't want to mangle line
+# framing for the downstream `tail -n 100`.
 set +e
-LAST_LINES=$(jq -c '
+LAST_LINES=$(perl -pe 's/[\x00-\x08\x0B\x0C\x0E-\x1F]//g' "$TRANSCRIPT_PATH" | jq -c '
   select(.type == "assistant") |
   select(any(.message.content[]?; .type == "text"))
-' "$TRANSCRIPT_PATH" 2>/dev/null | tail -n 100)
+' 2>/dev/null | tail -n 100)
 set -e
 
 MARKER=""
