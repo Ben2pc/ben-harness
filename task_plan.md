@@ -26,14 +26,14 @@
 
 ### Phase 1 — 分支 + Draft PR
 
-状态：**pending**（依赖 Phase 0 完成）
+状态：**complete（2026-04-21）**
 
-- [ ] 1.1 从 main 切 `feat/install-subcommand`
-- [ ] 1.2 首批 commit：spec 定稿 + task_plan.md + findings.md + progress.md
-- [ ] 1.3 `gh pr create --draft`；body 引用 #28 + #29
-- [ ] 1.4 CI 先跑起来
+- [x] 1.1 从 main 切 `feat/install-subcommand`（commit `1a2b26b`）
+- [x] 1.2 首批 commit：spec (`1a2b26b`) + 规划三件套 + .gitignore (`d7233af`)
+- [x] 1.3 `gh pr create --draft` → **PR #31** https://github.com/Ben2pc/auriga-cli/pull/31
+- [x] 1.4 CI — **仓库当前没有 GitHub Actions 配置**；spec §5.4/§11 里"CI 里加 `test -f dist/catalog.json`"的那条在 Phase 7 决定是否加 CI 或延期到另一 issue
 
-**出口条件**：Draft PR URL 可访问，CI 首次跑绿或定位到已知失败。
+**出口条件已达**：Draft PR URL 可访问；无 CI 即无"跑绿"概念，以"已知无 CI 配置"结案。
 
 ### Phase 2 — Catalog 基建（底座，先于 CLI）
 

@@ -6,10 +6,11 @@
 
 ## 当前状态
 
-- **当前 Phase**：Phase 0 ✅ 完成；可进入 Phase 1
-- **分支**：尚未创建（仍在 main；下一步切 `feat/install-subcommand`）
-- **Draft PR**：未开
-- **下一步（可直接执行的动作）**：Phase 1.1——从 main 切 `feat/install-subcommand` + 1.2 首批 commit（spec + 3 份规划文件）+ 1.3 开 Draft PR
+- **当前 Phase**：Phase 0 ✅ + Phase 1 ✅；可进入 Phase 2
+- **分支**：`feat/install-subcommand`（commit `1a2b26b` spec + `d7233af` 规划 + gitignore）
+- **Draft PR**：[#31](https://github.com/Ben2pc/auriga-cli/pull/31)（Open / Draft / Mergeable）
+- **CI**：仓库无 GitHub Actions 配置；Phase 7 决定是否顺带加 CI
+- **下一步（可直接执行的动作）**：Phase 2.1——写 `src/catalog.ts`（类型定义 + `loadCatalog()` 读取工具）；然后 2.2 build 脚本（用 `gray-matter`）；然后 2.3 改 `package.json`
 
 ## Session 1 — 2026-04-21（planning）
 
