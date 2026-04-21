@@ -50,13 +50,6 @@ const CATEGORY_SET = new Set<CategoryName>([
   "hooks",
 ]);
 
-const FILTER_FOR_TYPE = {
-  skills: "--skill",
-  recommended: "--recommended-skill",
-  plugins: "--plugin",
-  hooks: "--hook",
-} as const;
-
 const TYPE_FOR_FILTER = {
   "--skill": "skills",
   "--recommended-skill": "recommended",
