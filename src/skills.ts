@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { checkbox, select } from "@inquirer/prompts";
 import { exec, log, withEsc } from "./utils.js";
-import type { SkillsLock } from "./utils.js";
+import type { SkillEntry, SkillsLock } from "./utils.js";
 
 // Curated default-on set: skills that the workflow in the root CLAUDE.md
 // directly references. Anything else in skills-lock.json is surfaced via
@@ -31,8 +31,31 @@ function loadLock(packageRoot: string): SkillsLock {
   );
 }
 
+// Deterministic: selection order is preserved; the first occurrence of
+// each source fixes its position in the returned array.
+export function planSkillInstallCommands(
+  selected: string[],
+  lock: SkillsLock["skills"],
+  globalFlag: string,
+): { source: string; skills: string[]; command: string }[] {
+  const bySource = new Map<string, string[]>();
+  for (const name of selected) {
+    const entry = lock[name];
+    if (!entry) continue;
+    const bucket = bySource.get(entry.source);
+    if (bucket) bucket.push(name);
+    else bySource.set(entry.source, [name]);
+  }
+
+  return [...bySource].map(([source, skills]) => ({
+    source,
+    skills,
+    command: `npx -y skills add ${source}${globalFlag} --skill ${skills.join(" ")} --agent claude-code codex --yes`,
+  }));
+}
+
 async function installSelected(
-  entries: [string, { source: string }][],
+  entries: [string, SkillEntry][],
   defaultChecked: boolean,
   descriptionMap?: Record<string, string>,
 ): Promise<void> {
@@ -65,18 +88,15 @@ async function installSelected(
 
   const globalFlag = scope === "global" ? " -g" : "";
   const lock = Object.fromEntries(entries);
+  const batches = planSkillInstallCommands(selected, lock, globalFlag);
 
-  for (const name of selected) {
-    const entry = lock[name];
-    console.log(`\nInstalling ${name}...`);
+  for (const batch of batches) {
+    console.log(`\nInstalling ${batch.skills.join(", ")} from ${batch.source}...`);
     try {
-      exec(
-        `npx skills add ${entry.source}${globalFlag} --skill ${name} --agent claude-code codex --yes`,
-        { inherit: true },
-      );
-      log.ok(`${name}: installed`);
+      exec(batch.command, { inherit: true });
+      for (const name of batch.skills) log.ok(`${name}: installed`);
     } catch {
-      log.error(`${name}: failed to install`);
+      log.error(`${batch.source}: failed to install (${batch.skills.join(", ")})`);
     }
   }
 }

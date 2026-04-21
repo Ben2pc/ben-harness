@@ -1,6 +1,6 @@
 {
   "name": "auriga-cli",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Interactive CLI to install Claude Code harness modules (Workflow, Skills, Recommended Skills, Plugins, Hooks)",
   "type": "module",
   "bin": {
@@ -13,8 +13,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
-    "test": "tsc -p tsconfig.test.json && DEV=1 node --test dist-test/tests/hooks.test.js",
-    "test:watch": "tsc -p tsconfig.test.json --watch & node --test --watch dist-test/tests/hooks.test.js"
+    "test": "tsc -p tsconfig.test.json && DEV=1 node --test dist-test/tests/hooks.test.js dist-test/tests/skills.test.js",
+    "test:watch": "tsc -p tsconfig.test.json --watch & node --test --watch dist-test/tests/hooks.test.js dist-test/tests/skills.test.js"
   },
   "engines": {
     "node": ">=18"

@@ -46,7 +46,7 @@ npx auriga-cli
 
 ### Skills
 
-通过 `npx skills add` 逐个安装选中的 skills，同时安装到 Claude Code 和 Codex。
+通过 `npx skills add` 安装选中的 skills，同时安装到 Claude Code 和 Codex。
 
 | Skill | 来源 | 说明 |
 |---|---|---|
