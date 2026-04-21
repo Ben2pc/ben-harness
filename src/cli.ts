@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   exec,
   fetchContentRoot,
@@ -577,8 +578,22 @@ async function runLegacyMenu(): Promise<number> {
 // Script entrypoint
 // ---------------------------------------------------------------------------
 
-const invokedAsScript = process.argv[1]
-  && process.argv[1].endsWith("cli.js");
+// Guard keeps `main()` from auto-running when a test imports this
+// module. `.endsWith("cli.js")` looks simple but breaks for the
+// canonical install surface: `npm install -g` / `npx` create a symlink
+// at `node_modules/.bin/auriga-cli → .../dist/cli.js`, and the kernel
+// passes the symlink path (basename `auriga-cli`, no `cli.js` suffix)
+// as argv[1]. Under that check the CLI silently becomes a no-op.
+// Compare realpaths instead — argv[1]'s symlink resolves to the real
+// dist/cli.js, which matches `import.meta.url`'s file path exactly.
+const invokedAsScript = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
 
 if (invokedAsScript) {
   main(process.argv.slice(2))
