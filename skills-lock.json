@@ -9,12 +9,12 @@
     "claude-code-agent": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "e6ab7d4a6811795d59998333930641efd1fc1aa0ed8c5c0605ca995a764a5792"
+      "computedHash": "d8fed716acd65e533118701feea508973816fe272ce8ee8c38b84d8e5aae7a3c"
     },
     "codex-agent": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "3ff3053bae5b08b5700c8fe34314e59ee3c8063bd7beefb23b35cc01d7902e36"
+      "computedHash": "43b9fe71a05596ffadeea1c9d4d36d0b83ac83f5be3c183664c9f3b8f8c0e519"
     },
     "deep-review": {
       "source": "Ben2pc/g-claude-code-plugins",
