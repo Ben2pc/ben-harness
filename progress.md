@@ -6,12 +6,12 @@
 
 ## 当前状态
 
-- **当前 Phase**：Phase 0 ✅ + Phase 1 ✅ + Phase 2 ✅（commit `8c5cc46`）；可进入 Phase 3
-- **分支**：`feat/install-subcommand`（rebased onto 9c94e0f；5 ahead）
+- **当前 Phase**：Phase 0–3 ✅（最新 commit `3d86bfc`）；可进入 Phase 4
+- **分支**：`feat/install-subcommand`（7 ahead of main）
 - **Draft PR**：[#31](https://github.com/Ben2pc/auriga-cli/pull/31)（Open / Draft / Mergeable）
-- **CI**：仓库无 GitHub Actions 配置；Phase 7 决定是否顺带加 CI
-- **npm test**：62/62 绿（8 新增 catalog 测试 + 54 既有）
-- **下一步（可直接执行的动作）**：Phase 3.1——在 `src/utils.ts` 里加 `InstallOpts` 类型 + `isNonInteractive()`；然后依次改 workflow.ts / skills.ts / plugins.ts / hooks.ts 签名
+- **npm test**：62/62 绿
+- **Install 函数签名**：4 个 installer 都吃 `InstallOpts`；非交互 code path 就位，等 CLI parser 调用
+- **下一步（可直接执行的动作）**：Phase 4.0——dispatch codex 跑 `/test-designer`（TDD red，Independent Evaluation）产出 3 份失败测试：`tests/cli-parse.test.ts` / `tests/install-nontty.test.ts` / `tests/guide.test.ts`
 
 ## Session 1 — 2026-04-21（planning）
 

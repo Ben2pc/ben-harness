@@ -53,20 +53,17 @@
 
 ### Phase 3 — Install 函数签名扩展
 
-状态：**pending**
+状态：**complete（2026-04-21，commit `3d86bfc`）**
 
-- [ ] 3.1 `src/utils.ts` —— `InstallOpts` 类型 + `isNonInteractive()` + scope 词汇映射 `mapScope(s)`
-- [ ] 3.2 `src/workflow.ts` —— `installWorkflow(packageRoot, opts)`；opts 缺省保持现有 prompt
-- [ ] 3.3 `src/skills.ts` —— `installSkills` / `installRecommendedSkills` 改签名（`#29 批量化 + npx -y` 已在 main 的 commit 56f6812 落地，**不再重复做**）：
-  - 新签名吃 `opts: InstallOpts`；`interactive=false` 时跳过 scope/checkbox 交互，直接用 `opts.scope` + `opts.selected`
-  - 复用 `planSkillInstallCommands`（已导出为纯函数）
-  - 删除 `RECOMMENDED_DESCRIPTIONS` map（由 catalog 替代）
-  - `tests/skills.test.ts` 已覆盖 planner，只需新增"非交互路径"相关用例
-- [ ] 3.4 `src/plugins.ts` —— `installPlugins(packageRoot, opts)`
-- [ ] 3.5 `src/hooks.ts` —— `installHooks(packageRoot, opts)`
-- [ ] 3.6 更新 `tests/hooks.test.ts` 中的 caller 签名
+- [x] 3.1 `src/utils.ts` —— `InstallOpts` 类型 + `isNonInteractive()`（scope 映射在各 installer 内部就地处理，没必要抽全局 helper）
+- [x] 3.2 `src/workflow.ts` —— `installWorkflow(packageRoot, opts)` ✓
+- [x] 3.3 `src/skills.ts` —— `installSkills` / `installRecommendedSkills` 改签名；删除 `RECOMMENDED_DESCRIPTIONS`（由 catalog 替代）；`#29` 批量化逻辑保持不动
+- [x] 3.4 `src/plugins.ts` —— `installPlugins(packageRoot, opts)` ✓
+- [x] 3.5 `src/hooks.ts` —— `installHooks(packageRoot, opts)`：非交互模式下 user-scope + stale 提示都用默认值跳过（由 `--scope user` / 默认 remove 隐式表达意图）
+- [x] 3.6 `tests/hooks.test.ts` —— 仅调用 `installHook`（单数），签名未变，无需更新
+- [x] 补：`src/cli.ts` 既有 checkbox 菜单路径的 caller 都带上 `{ interactive: true }`，交互行为 bit-identical
 
-**出口条件**：`npm test` 绿；交互路径（现有 CLI）行为无回归。
+**出口条件已达**：`npm test` 62/62 绿；交互路径行为无回归；非交互 code path 已就绪，等 Phase 4 的 parser 驱动。
 
 ### Phase 4 — CLI dispatcher + parser + guide + help
 
