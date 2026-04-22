@@ -71,9 +71,15 @@ jobs:
         # Skip publish on dry-run workflow_dispatch. Tag-push always
         # publishes (there's no reason to push a tag without intent to
         # release).
+        #
+        # Auth: npm Trusted Publishing (OIDC) — GA since 2025-07-31.
+        # No NPM_TOKEN secret. Requires a Trusted Publisher config on
+        # npmjs.com bound to this exact workflow filename (release.yml).
+        # If you rename this file, update the npm config or publish
+        # will fail with "401 Unauthorized". `--provenance` is not
+        # needed — npm CLI attaches provenance automatically when it
+        # detects OIDC credentials.
         if: |
           github.event_name == 'push' ||
           (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
