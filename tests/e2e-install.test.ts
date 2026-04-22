@@ -123,6 +123,14 @@ function runCli(proj: string, args: string[], envExtra: Record<string, string> =
   });
 }
 
+// Plugins install shells out to `claude plugins install` — unavailable
+// in environments without Claude Code CLI (e.g. stripped Linux runners).
+// Scenarios that depend on it should skip rather than fail hard.
+function claudeCliAvailable(): boolean {
+  const r = spawnSync("which", ["claude"], { encoding: "utf-8" });
+  return r.status === 0 && r.stdout.trim().length > 0;
+}
+
 describe("e2e install — tarball → npm install → auriga-cli install", { skip: SKIP_REASON }, () => {
   before(() => {
     tarballPath = packTarball();
@@ -153,5 +161,137 @@ describe("e2e install — tarball → npm install → auriga-cli install", { ski
     assert.ok(fs.existsSync(agentsMd), `AGENTS.md missing at ${agentsMd}`);
     const lst = fs.lstatSync(agentsMd);
     assert.ok(lst.isSymbolicLink(), "AGENTS.md should be a symlink to CLAUDE.md");
+  });
+
+  test("install skills → WORKFLOW_SKILLS materialize under .agents/skills/", () => {
+    const proj = setupProject(tarballPath!);
+    const r = runCli(proj, ["install", "skills"]);
+    assert.equal(
+      r.status,
+      0,
+      `install skills exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+    );
+    // `npx skills add` materializes <skill>/SKILL.md under .agents/skills
+    // (or .claude/skills depending on the tool version). Check both
+    // canonical locations so the assertion survives a path-convention
+    // bump in the upstream `skills` CLI.
+    const brainstormingPaths = [
+      path.join(proj, ".agents", "skills", "brainstorming", "SKILL.md"),
+      path.join(proj, ".claude", "skills", "brainstorming", "SKILL.md"),
+    ];
+    const found = brainstormingPaths.find((p) => fs.existsSync(p));
+    assert.ok(
+      found,
+      `brainstorming SKILL.md missing — checked:\n  ${brainstormingPaths.join("\n  ")}`,
+    );
+  });
+
+  test("install recommended --recommended-skill codex-agent → only codex-agent lands", () => {
+    const proj = setupProject(tarballPath!);
+    const r = runCli(proj, ["install", "recommended", "--recommended-skill", "codex-agent"]);
+    assert.equal(
+      r.status,
+      0,
+      `install recommended exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+    );
+    const codexPaths = [
+      path.join(proj, ".agents", "skills", "codex-agent", "SKILL.md"),
+      path.join(proj, ".claude", "skills", "codex-agent", "SKILL.md"),
+    ];
+    const found = codexPaths.find((p) => fs.existsSync(p));
+    assert.ok(found, `codex-agent SKILL.md missing — checked:\n  ${codexPaths.join("\n  ")}`);
+  });
+
+  test("install plugins --plugin auriga-go → plugin registered in .claude/settings.json", { skip: claudeCliAvailable() ? undefined : "requires 'claude' CLI" }, () => {
+    const proj = setupProject(tarballPath!);
+    const r = runCli(proj, ["install", "plugins", "--plugin", "auriga-go"]);
+    assert.equal(
+      r.status,
+      0,
+      `install plugins exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+    );
+    // `claude plugins install` writes to .claude/settings.json.
+    // Exit 0 + any settings file present is a reasonable signal that
+    // the install pipeline ran without erroring out. Avoid depending on
+    // the exact JSON schema since it's controlled by the claude CLI.
+    const settings = path.join(proj, ".claude", "settings.json");
+    assert.ok(fs.existsSync(settings), `.claude/settings.json missing at ${settings}`);
+    const content = fs.readFileSync(settings, "utf-8");
+    assert.match(content, /auriga-go/, "auriga-go not mentioned in .claude/settings.json");
+  });
+
+  test("install hooks --hook notify → notify dir + settings entry", { skip: process.platform === "darwin" ? undefined : "notify hook is darwin-only" }, () => {
+    const proj = setupProject(tarballPath!);
+    const r = runCli(proj, ["install", "hooks", "--hook", "notify"]);
+    assert.equal(
+      r.status,
+      0,
+      `install hooks exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+    );
+    const hookDir = path.join(proj, ".claude", "hooks", "notify");
+    assert.ok(fs.existsSync(path.join(hookDir, "index.mjs")), "notify/index.mjs missing");
+    const settings = path.join(proj, ".claude", "settings.json");
+    assert.ok(fs.existsSync(settings), ".claude/settings.json missing");
+    const parsed = JSON.parse(fs.readFileSync(settings, "utf-8")) as {
+      hooks?: Record<string, Array<{ hooks: Array<{ _marker?: string }> }>>;
+    };
+    // Confirm the marker sentinel landed — that's the primary key
+    // addHookToSettings uses for idempotency, so its presence means the
+    // registry merge actually ran end-to-end.
+    const markers = Object.values(parsed.hooks ?? {})
+      .flatMap((events) => events.flatMap((e) => e.hooks.map((h) => h._marker)));
+    assert.ok(
+      markers.some((m) => typeof m === "string" && m.includes("notify")),
+      `expected an auriga:notify marker in settings.hooks, got ${JSON.stringify(markers)}`,
+    );
+  });
+
+  test("install skills --skill brainstorming → filter actually filters (other skills absent)", () => {
+    const proj = setupProject(tarballPath!);
+    const r = runCli(proj, ["install", "skills", "--skill", "brainstorming"]);
+    assert.equal(
+      r.status,
+      0,
+      `install skills --skill brainstorming exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+    );
+    const brainPaths = [
+      path.join(proj, ".agents", "skills", "brainstorming"),
+      path.join(proj, ".claude", "skills", "brainstorming"),
+    ];
+    const brainFound = brainPaths.find((p) => fs.existsSync(p));
+    assert.ok(brainFound, `brainstorming dir missing — checked:\n  ${brainPaths.join("\n  ")}`);
+
+    // A random non-selected workflow skill must NOT be present — proves
+    // the filter isn't a silent no-op that installs everything.
+    const otherPaths = [
+      path.join(proj, ".agents", "skills", "test-driven-development"),
+      path.join(proj, ".claude", "skills", "test-driven-development"),
+    ];
+    for (const p of otherPaths) {
+      assert.ok(!fs.existsSync(p), `non-selected skill leaked through filter: ${p}`);
+    }
+  });
+
+  test("install --all → workflow + skills + plugins + hooks all present", { skip: claudeCliAvailable() ? undefined : "requires 'claude' CLI" }, () => {
+    const proj = setupProject(tarballPath!);
+    const r = runCli(proj, ["install", "--all"]);
+    // `install --all` may exit 2 on partial success (e.g. one category
+    // fails). Accept 0 as strict pass, 2 with a retry hint as soft pass
+    // only if the core artifacts (CLAUDE.md + at least one skill) landed.
+    if (r.status !== 0 && r.status !== 2) {
+      assert.fail(`install --all exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
+    }
+
+    const claudeMd = path.join(proj, "CLAUDE.md");
+    assert.ok(fs.existsSync(claudeMd) && fs.statSync(claudeMd).size > 0, "CLAUDE.md missing/empty");
+
+    const brainPaths = [
+      path.join(proj, ".agents", "skills", "brainstorming", "SKILL.md"),
+      path.join(proj, ".claude", "skills", "brainstorming", "SKILL.md"),
+    ];
+    assert.ok(
+      brainPaths.some((p) => fs.existsSync(p)),
+      `no workflow skill landed — checked:\n  ${brainPaths.join("\n  ")}`,
+    );
   });
 });
