@@ -97,7 +97,7 @@ Installs selected plugins via `claude plugins install`, automatically adding req
 | skill-creator | Create and manage custom skills |
 | claude-md-management | Audit and improve CLAUDE.md |
 | codex | Codex cross-model collaboration |
-| auriga-go | Workflow autopilot for the auriga workflow. Reminder-based navigation across the 12 `CLAUDE.md` phases with an Experimental hook-backed `ship` mode. Bundles a skill (description-based NL trigger + `/auriga-go`) plus a plugin-level Stop hook for ship mode. |
+| auriga-go | Workflow autopilot for the auriga workflow. Reminder-based navigation across the `CLAUDE.md` phases with an Experimental hook-backed `ship` mode. Bundles a skill (description-based NL trigger + `/auriga-go`) plus a plugin-level Stop hook for ship mode. |
 
 ### Hooks
 

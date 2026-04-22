@@ -73,6 +73,6 @@ A workflow skill that drives the Agent forward along the auriga workflow (`CLAUD
 - `plugins/auriga-go/README.md` — plugin overview and manual install instructions
 - Repo-root `.claude-plugin/marketplace.json` — marketplace manifest listing auriga-go
 - `.claude/plugins.json` — entry for `auriga-go@auriga-cli` so `npx auriga-cli` → Plugins offers it
-- `CLAUDE.md` + `CLAUDE.zh-CN.md` reference auriga-go as an independent meta-tool (§ "Workflow Autopilot") and note it is a plugin
+- Root `CLAUDE.md` / `CLAUDE.zh-CN.md` do **not** reference auriga-go anymore — the dedicated "Workflow Autopilot" section was removed in the CLAUDE.md slim pass (PR #46) to keep the workflow spec minimal. auriga-go is now surfaced only via the Plugins table in `README.md` / `README.zh-CN.md` and the marketplace manifest.
 - `README.md` + `README.zh-CN.md` plugins-table row (removed from skills-table as part of the plugin conversion)
 - `.claude/CLAUDE.md` dev-guide documents plugin-owned authoring convention and the `${CLAUDE_SKILL_DIR}` bug workaround

@@ -684,6 +684,6 @@ README 更新：
 
 - [ ] `npm test` 全绿（含新增的 parse / non-tty / guide / exit-code 测试）
 - [ ] README 加 Agent bootstrap recipe 一段（开头即示例 `npx -y auriga-cli guide`；同时说明 `-y` 是 npx 的 flag）
-- [ ] 根 `CLAUDE.md` 加"如何重新安装 harness"的反向指针（指向 `auriga-cli guide`）
+- [x] ~~根 `CLAUDE.md` 加"如何重新安装 harness"的反向指针（指向 `auriga-cli guide`）~~ — 原 spec 实现时加了；PR #46 做 CLAUDE.md SSOT 瘦身时移除。现 bootstrap recipe 只在 `README.md` / `README.zh-CN.md` 留存。
 - [ ] `package.json` 版本号 bump minor
 - [ ] §10 的两条 spike 已跑完，结果回写到 §9 Risk 对应条目

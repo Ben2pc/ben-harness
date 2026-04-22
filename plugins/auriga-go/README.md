@@ -1,6 +1,6 @@
 # auriga-go
 
-Workflow autopilot for the [auriga workflow](https://github.com/Ben2pc/auriga-cli). Reminder-based navigation across the 12 phases in `CLAUDE.md`, with an Experimental `ship` mode that drives a small-scope spec to a PR Ready candidate autonomously.
+Workflow autopilot for the [auriga workflow](https://github.com/Ben2pc/auriga-cli). Reminder-based navigation across the phases in `CLAUDE.md`, with an Experimental `ship` mode that drives a small-scope spec to a PR Ready candidate autonomously.
 
 ## What it does
 
