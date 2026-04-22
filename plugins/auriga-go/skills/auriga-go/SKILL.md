@@ -170,7 +170,7 @@ Agent (auriga-go, auto):
   [task tracker shows "review-findings phase — triage deep-review punch list"]
 
   Stop: deep-review returned 3 blocking findings. #2 requires an architectural
-  refactor (src/skills.ts); the auriga workflow's review-findings guidance says
-  high-risk changes should be tracked as separate issues, not bundled into this
-  PR. Need confirmation: fix inside this PR, or open a tracking issue?
+  refactor (src/skills.ts); convention is that high-risk architectural changes
+  should be tracked as separate issues, not bundled into this PR. Need
+  confirmation: fix inside this PR, or open a tracking issue?
 ```

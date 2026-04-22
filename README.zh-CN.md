@@ -97,7 +97,7 @@ npx auriga-cli
 | skill-creator | 创建和管理自定义 skills |
 | claude-md-management | 审计和改进 CLAUDE.md |
 | codex | Codex 跨模型协作 |
-| auriga-go | auriga 工作流的自动驾驶：在 12 步内做 reminder-based 导航；包含 Experimental 的 hook-backed `ship` 模式。内置一个 skill（按 description 的自然语言触发 + `/auriga-go` slash command）和一个 plugin 层面的 Stop hook。 |
+| auriga-go | auriga 工作流的自动驾驶：按 `CLAUDE.md` 的 phase 做 reminder-based 导航；包含 Experimental 的 hook-backed `ship` 模式。内置一个 skill（按 description 的自然语言触发 + `/auriga-go` slash command）和一个 plugin 层面的 Stop hook。 |
 
 ### Hooks
 
