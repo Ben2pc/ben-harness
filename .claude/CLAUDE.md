@@ -105,6 +105,18 @@ bash tests/ship-loop.test.sh
                  # (ship-mode Stop hook). Not wired into `npm test` because it's
                  # bash + jq + perl, not Node. Run before any PR that touches
                  # plugins/auriga-go/scripts/ or the plugin's hooks/hooks.json.
+
+npm run sync-upstream
+                 # Bump external/g-claude-code-plugins submodule to upstream
+                 # main AND re-sync every tracked skill from that source in
+                 # one shot. Wraps git submodule update --remote + a
+                 # per-skill `npx skills add` loop (explicit allowlist, NOT
+                 # `skills update --project`, which would pull in transitive
+                 # meta-skill deps from obra/superpowers etc.). The allowlist
+                 # lives in scripts/sync-upstream.sh; if you add a new
+                 # tracked skill from g-claude-code-plugins, append it there.
+                 # Prints `git status` + next-step hints; does not commit or
+                 # open a PR (leaves the git flow to the caller).
 ```
 
 ## Data Sources
@@ -112,7 +124,7 @@ bash tests/ship-loop.test.sh
 | File | Maintained by | Purpose |
 |------|--------------|---------|
 | `skills-lock.json` | `npx skills` CLI | Skill registry (do NOT edit structure manually) |
-| `external/g-claude-code-plugins/` | git submodule | Upstream source-of-truth for the three orchestration skills (`deep-review`, `test-designer`, `parallel-implementation`). Iterate here → PR-merge upstream → re-run `npx skills add Ben2pc/g-claude-code-plugins --skill <name> --agent claude-code codex --yes` to sync. The synced copies under `.agents/skills/<name>/SKILL.md` are generated — do **not** edit them directly |
+| `external/g-claude-code-plugins/` | git submodule | Upstream source-of-truth for the three orchestration skills (`deep-review`, `test-designer`, `parallel-implementation`). Iterate here → PR-merge upstream → run `npm run sync-upstream` to bump the submodule pointer and re-sync every tracked skill from this source in one shot. The script wraps `git submodule update --remote` + a per-skill `npx skills add` loop (explicit allowlist, not `skills update`, so transitive meta-skill deps don't leak in). The synced copies under `.agents/skills/<name>/SKILL.md` are generated — do **not** edit them directly |
 | `plugins/<name>/` | Manual | auriga-cli-owned plugin source (e.g. `plugins/auriga-go/`). Distributed via the repo-root `.claude-plugin/marketplace.json`. Everything inside the dir ships to users — keep dev-only assets (tests) at repo-root `tests/` |
 | `.claude-plugin/marketplace.json` | Manual | Marketplace manifest: lists every plugin shipped from this repo |
 | `.claude/plugins.json` | Manual | Plugin definitions surfaced by the CLI Plugins picker |
