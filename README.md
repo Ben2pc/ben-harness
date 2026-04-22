@@ -123,6 +123,12 @@ Re-running the installer preserves your customized `config.json` and `icon.png`,
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (required for Plugins and Hooks modules)
 - [Homebrew](https://brew.sh) (recommended for the `notify` hook to install `alerter`)
 
+## Development
+
+- `npm test` — unit/integration tests (sub-second)
+- `bash tests/ship-loop.test.sh` — ship-loop Stop hook tests (bash)
+- `npm run test:e2e` — full tarball install e2e suite (~90-120s). Packs the actual npm tarball, installs it into a scratch project, and runs `auriga-cli install` against GitHub content pinned to the current HEAD SHA. The preflight uses `git branch -r --contains HEAD` — purely local, no network — so **HEAD must be reachable from a local remote ref** (a successful `git push` updates local remote refs synchronously; if someone else pushed, run `git fetch` first). The `plugins` and `--all` scenarios additionally require the `claude` CLI on PATH; they skip gracefully otherwise.
+
 ## License
 
 MIT
