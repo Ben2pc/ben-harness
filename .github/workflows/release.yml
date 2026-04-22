@@ -1,0 +1,139 @@
+name: Release
+
+# Triggered by tag push `v*` (canonical release path) or manual
+# workflow_dispatch for dry-run validation of this workflow itself.
+# See `.claude/CLAUDE.md` → "Release flow" for the discipline.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build + test, but skip npm publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write  # required for `gh release create` (read alone is not enough)
+  id-token: write  # required for OIDC auth to npm (auto-attaches provenance)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # `npm run test:e2e` preflight uses `git branch -r --contains
+          # HEAD`, which needs enough history for the remote-ref query
+          # to resolve. Default shallow clone can miss it.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Node 24 required for npm Trusted Publishing (OIDC). Older
+          # Node lines ship older npm — Node 22.x's bundled npm 10.x
+          # produces OIDC handshake failures (401 / "OIDC not supported")
+          # regardless of Trusted Publisher config on npmjs.com.
+          # Empirically confirmed in other repos — do not downgrade.
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm to >=11.5.1
+        # Belt-and-suspenders: Node 24 ships a recent npm, but the
+        # version floor for Trusted Publishing (per the 2025-07-31 GA
+        # announcement) is 11.5.1. Explicit upgrade guarantees the
+        # floor regardless of what setup-node resolves to. Self-
+        # documents the dependency.
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match package.json version '$PKG_VERSION'. Bump package.json or push the correct tag."
+            exit 1
+          fi
+          echo "Tag and package.json version agree: $PKG_VERSION"
+
+      - name: Unit tests
+        # `pretest: npm run build` hook (see package.json) rebuilds
+        # dist/ before tests run, so no separate Build step is needed.
+        run: npm test
+
+      - name: Ship-loop tests
+        run: bash tests/ship-loop.test.sh
+
+      - name: E2E install tests
+        # `pretest:e2e: npm run build` hook rebuilds dist/ before
+        # packing the tarball, so the e2e run validates current source.
+        # `install plugins` and `install --all` skip gracefully when
+        # `claude` CLI isn't on PATH (ubuntu-latest doesn't have it).
+        # `install hooks --hook notify` skips on non-darwin. The five
+        # remaining scenarios (preflight + workflow + skills + recommended
+        # + skills filter) still validate the tarball + fetch pipeline.
+        run: npm run test:e2e
+
+      - name: Publish to npm
+        # Publish only on tag push, OR on workflow_dispatch explicitly
+        # invoked against a tag ref with dry_run=false. The tag-ref
+        # gate is belt-and-suspenders: the tag/version guard above
+        # skips on non-tag refs, so without this AND-clause a manual
+        # `workflow_dispatch` with dry_run unchecked on main would
+        # publish the current package.json version unverified.
+        #
+        # Auth: npm Trusted Publishing (OIDC) — GA since 2025-07-31.
+        # No NPM_TOKEN secret. Requires a Trusted Publisher config on
+        # npmjs.com bound to this exact workflow filename (release.yml).
+        # If you rename this file, update the npm config or publish
+        # will fail with "401 Unauthorized".
+        #
+        # `--provenance` is explicit even though npm auto-attaches
+        # under OIDC — belt-and-suspenders: (1) self-documents intent,
+        # (2) fail-loud if OIDC handshake silently degrades (publish
+        # hard-fails rather than silently shipping unprovenanced),
+        # (3) defends against future npm CLI flipping auto-attach to
+        # opt-in.
+        if: |
+          startsWith(github.ref, 'refs/tags/v') && (
+            github.event_name == 'push' ||
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+          )
+        run: npm publish --access public --provenance
+
+      - name: Create GitHub Release
+        # Mirror the publish condition: GH Release is a companion to
+        # the npm publish, not a standalone artifact. If publish
+        # failed (previous step), this doesn't run. If dry_run or
+        # non-tag ref, this doesn't run.
+        #
+        # --generate-notes fills the body from commits/PRs between
+        # the previous tag and this one (auto-categorized by
+        # Conventional Commits prefix where present).
+        # Pre-release detection: tag names with a hyphen suffix (per
+        # semver 2.0 — e.g. v1.2.3-rc.1) get flagged as prerelease so
+        # GitHub's "Latest release" pointer stays on the stable line.
+        if: |
+          startsWith(github.ref, 'refs/tags/v') && (
+            github.event_name == 'push' ||
+            (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+          )
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag \
+            $PRERELEASE_FLAG

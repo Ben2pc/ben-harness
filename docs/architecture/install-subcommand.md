@@ -594,7 +594,7 @@ README 更新：
 
 ## 9. 风险
 
-1. **catalog drift**：npm 发布版 vs GitHub `main` 漂移。缓解：合 PR 后及时 `npm publish`。不需要额外机制。
+1. **catalog drift**：npm 发布版 vs GitHub `main` 漂移。缓解：走 `.github/workflows/release.yml`——推 tag 自动触发 CI publish，不再有"忘了发"风险。不需要额外机制。
 2. **`claude plugins install` 非 TTY 行为**（spike #1 已验证 2026-04-21）：三种场景（install、marketplace add 幂等、marketplace add 错误）均非交互 OK，exit 0/1 干净，无 hang 无 prompt。`stdio: "inherit"` 现路径安全。**已解除风险**，保留此条作为"版本升级时需回归测试"的注记。
 3. **Session reload 感知**（spike #2 已验证 2026-04-21）：实测确认 **CLAUDE.md / skills / plugins 三类均在 session 启动时加载，不支持热重载**——子 `claude -p` 自省 system prompt 明确："启动时 cwd 里没有 CLAUDE.md，刚才的 cp 是会话开始后发生的，不会被追加到已锁定的 system prompt"。当前 spec 设计（install 成功后 stderr 打印 reload 提醒 + guide SOP Step 4 明说 REQUIRED）成立。**已知限制**，由 guide SOP 强制告知 Agent。若将来 Claude Code 支持热加载，重新评估降级措辞。
 4. **`npx skills add --yes` 的幂等**：重复跑不应炸但可能有输出噪音；作为已知行为不处理。
