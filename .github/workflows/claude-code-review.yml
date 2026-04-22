@@ -37,10 +37,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Fetch the g-claude-code-plugins submodule so the review prompt
-          # below can read the deep-review SKILL.md directly — the skill is
-          # the single source of truth for dimensions / severity rules.
+          # Keep submodules available so future PRs that bump the
+          # g-claude-code-plugins pointer can be reviewed with their
+          # referenced content actually present on the runner.
           submodules: recursive
+
+      - name: Ensure deep-review skill is available
+        # This workflow is meant to be portable — it may ship to repos
+        # that don't already have the deep-review skill installed.
+        # Auto-install from the upstream marketplace if missing so the
+        # review prompt below can always Read the skill file.
+        # In repos that install the full auriga harness (skill is in
+        # WORKFLOW_SKILLS), this is a no-op — the file is already tracked.
+        # The file lives at .agents/skills/... (not .claude/skills/...)
+        # because that's the deterministic output path of `skills add`;
+        # the `.claude/skills/` symlink is an overlay for native skill
+        # discovery, which is orthogonal since we Read the file explicitly.
+        run: |
+          if [ -f .agents/skills/deep-review/SKILL.md ]; then
+            echo "deep-review skill already present"
+          else
+            echo "deep-review skill missing — installing from Ben2pc/g-claude-code-plugins"
+            npx -y skills add Ben2pc/g-claude-code-plugins \
+              --skill deep-review \
+              --agent claude-code \
+              --yes
+          fi
 
       - name: Run Claude Code Review
         id: claude-review
@@ -62,12 +84,14 @@ jobs:
           # you can't tell why a review went shallow.
           show_full_output: 'true'
 
-          # Review taxonomy (dimensions, severity rules, output format) lives in
-          # the deep-review SKILL.md inside the g-claude-code-plugins submodule —
-          # that is the single source of truth. This prompt defers to the skill
-          # and only encodes CI-specific adaptations: serial (not parallel-dispatch)
-          # execution, and two-channel posting into GitHub's review threads vs.
-          # top-level comments.
+          # Review taxonomy (dimensions, severity rules, output format) lives
+          # in the deep-review SKILL.md — the single source of truth. The
+          # bootstrap step above guarantees .agents/skills/deep-review/SKILL.md
+          # exists (either already committed by the auriga harness, or just
+          # installed via `npx skills add`). This prompt defers to the skill
+          # and only encodes CI-specific adaptations: serial (not
+          # parallel-dispatch) execution, and two-channel posting into
+          # GitHub's review threads vs. top-level comments.
           #
           # Two-channel posting: the repo has "Require conversation
           # resolution before merging" enabled, which gates on review
@@ -84,9 +108,9 @@ jobs:
 
             ## Step 2 — load the review contract
 
-            The dimension taxonomy, per-dimension focus lists, severity rules, and "No findings." output format come from the `deep-review` skill — it is the authoritative contract. Read it from the checked-out submodule:
+            The dimension taxonomy, per-dimension focus lists, severity rules, and "No findings." output format come from the `deep-review` skill — it is the authoritative contract. Read it from the skill's native location (the bootstrap step above guarantees the file exists):
 
-            `external/g-claude-code-plugins/skills/deep-review/SKILL.md`
+            `.agents/skills/deep-review/SKILL.md`
 
             Apply the skill's dispatch matrix against this PR's diff.
 
