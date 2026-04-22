@@ -125,9 +125,9 @@ npx auriga-cli
 
 ## 开发
 
-- `npm test` —— 114 个单元/集成测试（~0.4s）
-- `bash tests/ship-loop.test.sh` —— ship-loop Stop hook 测试（22 个场景，bash）
-- `npm run test:e2e` —— 完整的 tarball 安装 e2e 套件（~100s）。`npm pack` 打出真实 tarball，装到临时项目，对着 GitHub 上当前 HEAD SHA 对应的 content 跑 `auriga-cli install`。**需要先把 HEAD 推到 `origin`** —— 否则套件会自动跳过并给出友好提示。`plugins` 和 `--all` 场景还要求 `claude` CLI 已在 PATH。
+- `npm test` —— 单元/集成测试（亚秒）
+- `bash tests/ship-loop.test.sh` —— ship-loop Stop hook 测试（bash）
+- `npm run test:e2e` —— 完整的 tarball 安装 e2e 套件（~90-120s）。`npm pack` 打出真实 tarball，装到临时项目，对着 GitHub 上当前 HEAD SHA 对应的 content 跑 `auriga-cli install`。预检用 `git branch -r --contains HEAD`，纯本地、不发网络请求，因此 **HEAD 必须能被任何本地 remote ref 追溯到**（`git push` 成功时会同步更新本地 remote ref；如果是别人推的，先 `git fetch`）。`plugins` 和 `--all` 场景还要求 `claude` CLI 已在 PATH，否则这两条会优雅跳过。
 
 ## License
 

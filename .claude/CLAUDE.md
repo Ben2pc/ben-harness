@@ -54,6 +54,7 @@ tests/
   guide.test.ts         — renderGuide snapshot + ANSI branch
   validators.test.ts    — validateSkillsLock / validatePluginsConfig
   entrypoint.test.ts    — dist/cli.js symlinked-bin guard regression
+  e2e-install.test.ts   — tarball → npm install → auriga-cli install (network + local, runs via npm run test:e2e, not `npm test`)
   ship-loop.test.sh     — bash unit tests for plugins/auriga-go/scripts/ship-loop.sh
 ```
 
@@ -88,6 +89,16 @@ npm test         # tsc -p tsconfig.test.json → dist-test/, then node --test
                  #   Hook installer unit + integration tests live in tests/.
                  #   Run before opening any PR that touches src/hooks.ts,
                  #   src/utils.ts, or .claude/hooks/.
+
+npm run test:e2e # Full tarball install e2e (~90-120s). Packs the actual npm
+                 # tarball, installs into a scratch project, runs
+                 # `auriga-cli install` against GitHub content pinned to
+                 # HEAD SHA. Pretest hook runs `npm run build` so the
+                 # tarball always reflects current src/. Requires HEAD to be
+                 # pushed (preflight skips otherwise); `plugins` and `--all`
+                 # scenarios additionally require `claude` CLI on PATH.
+                 # Not in `npm test` — network-bound and slow. Run before
+                 # cutting a release tag.
 
 bash tests/ship-loop.test.sh
                  # Unit tests for plugins/auriga-go/scripts/ship-loop.sh

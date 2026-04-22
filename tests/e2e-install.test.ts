@@ -22,12 +22,14 @@ import { after, before, describe, test } from "node:test";
 // This test is LOCAL-ONLY for now (dev runs it after `git push`):
 //   npm run test:e2e
 // It's NOT in `npm test` because it takes ~1-2 minutes and requires
-// network access. PR 2 will wire it into a tag-triggered release
-// workflow for the publish gate.
+// network access. A follow-up release workflow will wire the same test
+// into a tag-push publish gate.
 
+// `npm run test:e2e` always runs from the repo root (same contract as
+// `npm test`). We rely on this to resolve relative npm/git commands.
 const REPO_ROOT = process.cwd();
 
-function sh(cmd: string, args: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}) {
+function run(cmd: string, args: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}) {
   return spawnSync(cmd, args, {
     cwd: opts.cwd ?? REPO_ROOT,
     env: opts.env ?? process.env,
@@ -35,263 +37,326 @@ function sh(cmd: string, args: string[], opts: { cwd?: string; env?: NodeJS.Proc
   });
 }
 
-function getHeadSha(): string {
-  const r = sh("git", ["rev-parse", "HEAD"]);
-  if (r.status !== 0) throw new Error(`git rev-parse HEAD failed: ${r.stderr}`);
-  return r.stdout.trim();
-}
-
-// `git branch -r --contains <sha>` prints remote branches that reach
-// the SHA. Empty stdout means the commit isn't pushed. Uses local refs
-// only — no network round-trip, which means the caller should have
-// recently pushed (or fetched) for the check to be meaningful. We
-// document this in the README alongside the test:e2e invocation.
-function shaReachableFromOrigin(sha: string): boolean {
-  const r = sh("git", ["branch", "-r", "--contains", sha]);
-  return r.status === 0 && r.stdout.trim().length > 0;
-}
-
-const HEAD_SHA = getHeadSha();
-const SHA_ON_ORIGIN = shaReachableFromOrigin(HEAD_SHA);
-const SKIP_REASON = SHA_ON_ORIGIN
-  ? undefined
-  : `HEAD ${HEAD_SHA.slice(0, 8)} not reachable from any origin/* ref — run \`git push\` first, or \`git fetch origin\` if you just pushed.`;
-
-const scratchDirs: string[] = [];
-function makeScratch(label: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `auriga-e2e-${label}-`));
-  scratchDirs.push(dir);
-  return dir;
-}
-
-after(() => {
-  for (const d of scratchDirs) {
-    try { fs.rmSync(d, { recursive: true, force: true }); } catch {}
+// Lazy: running `git rev-parse HEAD` at module import would crash the
+// entire test process if the file were ever imported from a non-git
+// checkout (e.g. a tarball). Defer until describe evaluation so the
+// suite-level skip can still fire with a clean message.
+let _gitState: { headSha: string; onOrigin: boolean; skipReason: string | undefined } | null = null;
+function gitState() {
+  if (_gitState) return _gitState;
+  const headResult = run("git", ["rev-parse", "HEAD"]);
+  if (headResult.status !== 0) {
+    _gitState = {
+      headSha: "",
+      onOrigin: false,
+      skipReason: `not in a git repo (git rev-parse HEAD failed): ${headResult.stderr.trim()}`,
+    };
+    return _gitState;
   }
-});
-
-let tarballPath: string | null = null;
-
-function packTarball(): string {
-  const dest = makeScratch("pack");
-  const r = sh("npm", ["pack", "--pack-destination", dest]);
-  if (r.status !== 0) {
-    throw new Error(`npm pack failed (exit ${r.status}): ${r.stderr || r.stdout}`);
-  }
-  // npm pack prints the tarball filename on the last line of stdout.
-  const last = r.stdout.trim().split(/\r?\n/).at(-1) ?? "";
-  const tarball = path.join(dest, last);
-  if (!fs.existsSync(tarball)) {
-    throw new Error(`npm pack claimed to emit ${last} but it does not exist in ${dest}`);
-  }
-  return tarball;
+  const headSha = headResult.stdout.trim();
+  // `git branch -r --contains <sha>` prints remote branches that reach
+  // the SHA. Empty stdout means the commit isn't pushed to a remote
+  // that the local checkout knows about. Uses local refs only — no
+  // network round-trip. The caller should have recently pushed so that
+  // `push` (which updates local remote refs synchronously) made the
+  // SHA reachable; or have `git fetch`-ed if someone else pushed it.
+  const reachResult = run("git", ["branch", "-r", "--contains", headSha]);
+  const onOrigin = reachResult.status === 0 && reachResult.stdout.trim().length > 0;
+  _gitState = {
+    headSha,
+    onOrigin,
+    skipReason: onOrigin
+      ? undefined
+      : `HEAD ${headSha.slice(0, 8)} is not reachable from any remote ref known locally — push first (a successful push updates local remote refs) or fetch if someone else pushed it.`,
+  };
+  return _gitState;
 }
 
-// Set up a fresh scratch project and install the just-packed tarball
-// into it. Returns the project dir. Uses `npm install --no-audit
-// --no-fund --silent` to keep stderr clean and skip unrelated registry
-// chatter. Registry deps (@inquirer/prompts, gray-matter) still fetch
-// from npmjs.com — this assumes the dev machine has network.
-function setupProject(tarball: string): string {
-  const proj = makeScratch("proj");
-  fs.writeFileSync(
-    path.join(proj, "package.json"),
-    JSON.stringify({ name: "scratch", version: "0.0.0", private: true }),
-  );
-  const r = sh("npm", ["install", tarball, "--no-audit", "--no-fund", "--silent"], {
-    cwd: proj,
-  });
-  if (r.status !== 0) {
-    throw new Error(`npm install <tarball> failed (exit ${r.status}): ${r.stderr || r.stdout}`);
-  }
-  return proj;
-}
-
-function runCli(proj: string, args: string[], envExtra: Record<string, string> = {}) {
-  const bin = path.join(proj, "node_modules", ".bin", "auriga-cli");
-  if (!fs.existsSync(bin)) {
-    throw new Error(`auriga-cli bin not found at ${bin}`);
-  }
-  return spawnSync(bin, args, {
-    cwd: proj,
-    encoding: "utf-8",
-    env: {
-      ...process.env,
-      AURIGA_CONTENT_REF: HEAD_SHA,
-      ...envExtra,
-    },
-  });
-}
-
-// Plugins install shells out to `claude plugins install` — unavailable
-// in environments without Claude Code CLI (e.g. stripped Linux runners).
-// Scenarios that depend on it should skip rather than fail hard.
-function claudeCliAvailable(): boolean {
+// Cache so scenarios consulting this don't spawn `which claude` N times.
+// Plugins install shells out to `claude plugins install`, unavailable
+// in stripped environments; scenarios that depend on it skip rather
+// than fail hard.
+const CLAUDE_AVAILABLE = (() => {
   const r = spawnSync("which", ["claude"], { encoding: "utf-8" });
   return r.status === 0 && r.stdout.trim().length > 0;
-}
+})();
 
-describe("e2e install — tarball → npm install → auriga-cli install", { skip: SKIP_REASON }, () => {
-  before(() => {
-    tarballPath = packTarball();
-  });
+describe(
+  "e2e install — tarball → npm install → auriga-cli install",
+  { skip: gitState().skipReason },
+  () => {
+    const scratchDirs: string[] = [];
+    let tarballPath: string | null = null;
 
-  test("preflight: HEAD is reachable from origin", () => {
-    // Tautological given the suite-level skip, but surfaces the state
-    // explicitly in test output so a green run confirms we DID verify
-    // the push — not that we silently skipped.
-    assert.ok(SHA_ON_ORIGIN, SKIP_REASON);
-    assert.ok(tarballPath && fs.existsSync(tarballPath), "tarball not packed");
-  });
-
-  test("install workflow → CLAUDE.md + AGENTS.md symlink land in the project", () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "workflow"]);
-    assert.equal(
-      r.status,
-      0,
-      `auriga-cli install workflow exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
-    );
-
-    const claudeMd = path.join(proj, "CLAUDE.md");
-    assert.ok(fs.existsSync(claudeMd), `CLAUDE.md missing at ${claudeMd}`);
-    assert.ok(fs.statSync(claudeMd).size > 0, "CLAUDE.md is empty");
-
-    const agentsMd = path.join(proj, "AGENTS.md");
-    assert.ok(fs.existsSync(agentsMd), `AGENTS.md missing at ${agentsMd}`);
-    const lst = fs.lstatSync(agentsMd);
-    assert.ok(lst.isSymbolicLink(), "AGENTS.md should be a symlink to CLAUDE.md");
-  });
-
-  test("install skills → WORKFLOW_SKILLS materialize under .agents/skills/", () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "skills"]);
-    assert.equal(
-      r.status,
-      0,
-      `install skills exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
-    );
-    // `npx skills add` materializes <skill>/SKILL.md under .agents/skills
-    // (or .claude/skills depending on the tool version). Check both
-    // canonical locations so the assertion survives a path-convention
-    // bump in the upstream `skills` CLI.
-    const brainstormingPaths = [
-      path.join(proj, ".agents", "skills", "brainstorming", "SKILL.md"),
-      path.join(proj, ".claude", "skills", "brainstorming", "SKILL.md"),
-    ];
-    const found = brainstormingPaths.find((p) => fs.existsSync(p));
-    assert.ok(
-      found,
-      `brainstorming SKILL.md missing — checked:\n  ${brainstormingPaths.join("\n  ")}`,
-    );
-  });
-
-  test("install recommended --recommended-skill codex-agent → only codex-agent lands", () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "recommended", "--recommended-skill", "codex-agent"]);
-    assert.equal(
-      r.status,
-      0,
-      `install recommended exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
-    );
-    const codexPaths = [
-      path.join(proj, ".agents", "skills", "codex-agent", "SKILL.md"),
-      path.join(proj, ".claude", "skills", "codex-agent", "SKILL.md"),
-    ];
-    const found = codexPaths.find((p) => fs.existsSync(p));
-    assert.ok(found, `codex-agent SKILL.md missing — checked:\n  ${codexPaths.join("\n  ")}`);
-  });
-
-  test("install plugins --plugin auriga-go → plugin registered in .claude/settings.json", { skip: claudeCliAvailable() ? undefined : "requires 'claude' CLI" }, () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "plugins", "--plugin", "auriga-go"]);
-    assert.equal(
-      r.status,
-      0,
-      `install plugins exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
-    );
-    // `claude plugins install` writes to .claude/settings.json.
-    // Exit 0 + any settings file present is a reasonable signal that
-    // the install pipeline ran without erroring out. Avoid depending on
-    // the exact JSON schema since it's controlled by the claude CLI.
-    const settings = path.join(proj, ".claude", "settings.json");
-    assert.ok(fs.existsSync(settings), `.claude/settings.json missing at ${settings}`);
-    const content = fs.readFileSync(settings, "utf-8");
-    assert.match(content, /auriga-go/, "auriga-go not mentioned in .claude/settings.json");
-  });
-
-  test("install hooks --hook notify → notify dir + settings entry", { skip: process.platform === "darwin" ? undefined : "notify hook is darwin-only" }, () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "hooks", "--hook", "notify"]);
-    assert.equal(
-      r.status,
-      0,
-      `install hooks exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
-    );
-    const hookDir = path.join(proj, ".claude", "hooks", "notify");
-    assert.ok(fs.existsSync(path.join(hookDir, "index.mjs")), "notify/index.mjs missing");
-    const settings = path.join(proj, ".claude", "settings.json");
-    assert.ok(fs.existsSync(settings), ".claude/settings.json missing");
-    const parsed = JSON.parse(fs.readFileSync(settings, "utf-8")) as {
-      hooks?: Record<string, Array<{ hooks: Array<{ _marker?: string }> }>>;
-    };
-    // Confirm the marker sentinel landed — that's the primary key
-    // addHookToSettings uses for idempotency, so its presence means the
-    // registry merge actually ran end-to-end.
-    const markers = Object.values(parsed.hooks ?? {})
-      .flatMap((events) => events.flatMap((e) => e.hooks.map((h) => h._marker)));
-    assert.ok(
-      markers.some((m) => typeof m === "string" && m.includes("notify")),
-      `expected an auriga:notify marker in settings.hooks, got ${JSON.stringify(markers)}`,
-    );
-  });
-
-  test("install skills --skill brainstorming → filter actually filters (other skills absent)", () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "skills", "--skill", "brainstorming"]);
-    assert.equal(
-      r.status,
-      0,
-      `install skills --skill brainstorming exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
-    );
-    const brainPaths = [
-      path.join(proj, ".agents", "skills", "brainstorming"),
-      path.join(proj, ".claude", "skills", "brainstorming"),
-    ];
-    const brainFound = brainPaths.find((p) => fs.existsSync(p));
-    assert.ok(brainFound, `brainstorming dir missing — checked:\n  ${brainPaths.join("\n  ")}`);
-
-    // A random non-selected workflow skill must NOT be present — proves
-    // the filter isn't a silent no-op that installs everything.
-    const otherPaths = [
-      path.join(proj, ".agents", "skills", "test-driven-development"),
-      path.join(proj, ".claude", "skills", "test-driven-development"),
-    ];
-    for (const p of otherPaths) {
-      assert.ok(!fs.existsSync(p), `non-selected skill leaked through filter: ${p}`);
-    }
-  });
-
-  test("install --all → workflow + skills + plugins + hooks all present", { skip: claudeCliAvailable() ? undefined : "requires 'claude' CLI" }, () => {
-    const proj = setupProject(tarballPath!);
-    const r = runCli(proj, ["install", "--all"]);
-    // `install --all` may exit 2 on partial success (e.g. one category
-    // fails). Accept 0 as strict pass, 2 with a retry hint as soft pass
-    // only if the core artifacts (CLAUDE.md + at least one skill) landed.
-    if (r.status !== 0 && r.status !== 2) {
-      assert.fail(`install --all exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
+    function makeScratch(label: string): string {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), `auriga-e2e-${label}-`));
+      scratchDirs.push(dir);
+      return dir;
     }
 
-    const claudeMd = path.join(proj, "CLAUDE.md");
-    assert.ok(fs.existsSync(claudeMd) && fs.statSync(claudeMd).size > 0, "CLAUDE.md missing/empty");
+    function packTarball(): string {
+      const dest = makeScratch("pack");
+      // `npm pack --json` is structured and version-proof: stdout is a
+      // JSON array with `.filename` on each entry. Parsing the last
+      // line of human-readable output is fragile across npm versions.
+      const r = run("npm", ["pack", "--pack-destination", dest, "--json"]);
+      if (r.status !== 0) {
+        throw new Error(`npm pack failed (exit ${r.status}): ${r.stderr || r.stdout || "(no output)"}`);
+      }
+      const parsed = JSON.parse(r.stdout) as Array<{ filename?: string }>;
+      const filename = parsed?.[0]?.filename;
+      if (!filename) {
+        throw new Error(`npm pack --json returned unexpected shape: ${r.stdout.slice(0, 200)}`);
+      }
+      const tarball = path.join(dest, filename);
+      if (!fs.existsSync(tarball)) {
+        throw new Error(`npm pack claimed to emit ${filename} but it does not exist in ${dest}`);
+      }
+      return tarball;
+    }
 
-    const brainPaths = [
-      path.join(proj, ".agents", "skills", "brainstorming", "SKILL.md"),
-      path.join(proj, ".claude", "skills", "brainstorming", "SKILL.md"),
-    ];
-    assert.ok(
-      brainPaths.some((p) => fs.existsSync(p)),
-      `no workflow skill landed — checked:\n  ${brainPaths.join("\n  ")}`,
+    // Set up a fresh scratch project and install the just-packed
+    // tarball into it. Returns the project dir. Registry deps
+    // (@inquirer/prompts, gray-matter) still fetch from npmjs.com —
+    // this assumes the dev machine has network.
+    function setupProject(tarball: string): string {
+      const proj = makeScratch("proj");
+      fs.writeFileSync(
+        path.join(proj, "package.json"),
+        JSON.stringify({ name: "scratch", version: "0.0.0", private: true }),
+      );
+      const r = run("npm", ["install", tarball, "--no-audit", "--no-fund", "--silent"], {
+        cwd: proj,
+      });
+      if (r.status !== 0) {
+        throw new Error(
+          `npm install <tarball> failed (exit ${r.status}): ${r.stderr || r.stdout || "(no output)"}`,
+        );
+      }
+      return proj;
+    }
+
+    function runCli(proj: string, args: string[], envExtra: Record<string, string> = {}) {
+      const bin = path.join(proj, "node_modules", ".bin", "auriga-cli");
+      if (!fs.existsSync(bin)) {
+        throw new Error(`auriga-cli bin not found at ${bin}`);
+      }
+      // Scrub DEV from the inherited env: a dev shell with `DEV=1`
+      // exported (documented in README as the dev flow) would make
+      // `fetchContentRoot` short-circuit to `getPackageRoot()`. The
+      // installed tarball's package root does not carry CLAUDE.md /
+      // skills-lock.json / .claude/*.json (those are excluded from
+      // the `files` manifest on purpose — they live on GitHub), so
+      // every scenario would fail with a misleading "file missing"
+      // error. The e2e's whole point is to exercise the real fetch
+      // path, so DEV must be explicitly off.
+      const env: NodeJS.ProcessEnv = { ...process.env, AURIGA_CONTENT_REF: gitState().headSha, ...envExtra };
+      delete env.DEV;
+      return spawnSync(bin, args, { cwd: proj, encoding: "utf-8", env });
+    }
+
+    // Skills materialize at `.agents/skills/<name>` OR `.claude/skills/<name>`
+    // depending on the upstream `skills` CLI's convention. Check both
+    // so the assertion survives a benign path-convention bump.
+    function findSkillDir(proj: string, name: string): string | undefined {
+      const candidates = [
+        path.join(proj, ".agents", "skills", name),
+        path.join(proj, ".claude", "skills", name),
+      ];
+      return candidates.find((p) => fs.existsSync(p));
+    }
+    function findSkillFile(proj: string, name: string): string | undefined {
+      const dir = findSkillDir(proj, name);
+      if (!dir) return undefined;
+      const f = path.join(dir, "SKILL.md");
+      return fs.existsSync(f) ? f : undefined;
+    }
+
+    // Any test calling an installer that shells out to the npm
+    // registry or GitHub can in principle hang (registry slow-lane,
+    // `claude plugins install` waiting on auth prompt on some CLI
+    // versions). Without a timeout the suite hangs indefinitely,
+    // which is nasty for a release gate. 180s per test is generous
+    // for the 30-40s `install skills` / `install --all` scenarios.
+    const TIMEOUT = 180_000;
+
+    before(() => {
+      tarballPath = packTarball();
+    });
+
+    after(() => {
+      for (const d of scratchDirs) {
+        try { fs.rmSync(d, { recursive: true, force: true }); } catch {}
+      }
+    });
+
+    test("preflight: HEAD is reachable from origin", { timeout: TIMEOUT }, () => {
+      // Tautological given the suite-level skip, but surfaces the state
+      // explicitly in test output so a green run confirms we DID verify
+      // the push — not that we silently skipped.
+      assert.ok(gitState().onOrigin, gitState().skipReason);
+      assert.ok(tarballPath && fs.existsSync(tarballPath), "tarball not packed");
+    });
+
+    test("install workflow → CLAUDE.md + AGENTS.md symlink land in the project", { timeout: TIMEOUT }, () => {
+      const proj = setupProject(tarballPath!);
+      const r = runCli(proj, ["install", "workflow"]);
+      assert.equal(
+        r.status,
+        0,
+        `auriga-cli install workflow exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+      );
+
+      const claudeMd = path.join(proj, "CLAUDE.md");
+      assert.ok(fs.existsSync(claudeMd), `CLAUDE.md missing at ${claudeMd}`);
+      assert.ok(fs.statSync(claudeMd).size > 0, "CLAUDE.md is empty");
+
+      const agentsMd = path.join(proj, "AGENTS.md");
+      assert.ok(fs.existsSync(agentsMd), `AGENTS.md missing at ${agentsMd}`);
+      const lst = fs.lstatSync(agentsMd);
+      assert.ok(lst.isSymbolicLink(), "AGENTS.md should be a symlink to CLAUDE.md");
+    });
+
+    test("install skills → WORKFLOW_SKILLS materialize under .agents/skills/", { timeout: TIMEOUT }, () => {
+      const proj = setupProject(tarballPath!);
+      const r = runCli(proj, ["install", "skills"]);
+      assert.equal(
+        r.status,
+        0,
+        `install skills exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+      );
+      assert.ok(findSkillFile(proj, "brainstorming"), "brainstorming SKILL.md missing");
+    });
+
+    test("install recommended --recommended-skill codex-agent → only codex-agent lands", { timeout: TIMEOUT }, () => {
+      const proj = setupProject(tarballPath!);
+      const r = runCli(proj, ["install", "recommended", "--recommended-skill", "codex-agent"]);
+      assert.equal(
+        r.status,
+        0,
+        `install recommended exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+      );
+      assert.ok(findSkillFile(proj, "codex-agent"), "codex-agent SKILL.md missing");
+    });
+
+    test(
+      "install plugins --plugin auriga-go → plugin registered in .claude/settings.json",
+      { skip: CLAUDE_AVAILABLE ? undefined : "requires 'claude' CLI", timeout: TIMEOUT },
+      () => {
+        const proj = setupProject(tarballPath!);
+        const r = runCli(proj, ["install", "plugins", "--plugin", "auriga-go"]);
+        assert.equal(
+          r.status,
+          0,
+          `install plugins exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+        );
+        const settings = path.join(proj, ".claude", "settings.json");
+        assert.ok(fs.existsSync(settings), `.claude/settings.json missing at ${settings}`);
+        const content = fs.readFileSync(settings, "utf-8");
+        assert.match(content, /auriga-go/, "auriga-go not mentioned in .claude/settings.json");
+      },
     );
-  });
-});
+
+    test(
+      "install hooks --hook notify → notify dir + settings entry",
+      { skip: process.platform === "darwin" ? undefined : "notify hook is darwin-only", timeout: TIMEOUT },
+      () => {
+        const proj = setupProject(tarballPath!);
+        const r = runCli(proj, ["install", "hooks", "--hook", "notify"]);
+        assert.equal(
+          r.status,
+          0,
+          `install hooks exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+        );
+        const hookDir = path.join(proj, ".claude", "hooks", "notify");
+        assert.ok(fs.existsSync(path.join(hookDir, "index.mjs")), "notify/index.mjs missing");
+        const settings = path.join(proj, ".claude", "settings.json");
+        assert.ok(fs.existsSync(settings), ".claude/settings.json missing");
+        const parsed = JSON.parse(fs.readFileSync(settings, "utf-8")) as {
+          hooks?: Record<string, Array<{ hooks: Array<{ _marker?: string }> }>>;
+        };
+        // Confirm the marker sentinel landed — that's the primary key
+        // addHookToSettings uses for idempotency, so its presence means
+        // the registry merge actually ran end-to-end.
+        const markers = Object.values(parsed.hooks ?? {})
+          .flatMap((events) => events.flatMap((e) => e.hooks.map((h) => h._marker)));
+        assert.ok(
+          markers.some((m) => typeof m === "string" && m.includes("notify")),
+          `expected an auriga:notify marker in settings.hooks, got ${JSON.stringify(markers)}`,
+        );
+      },
+    );
+
+    test("install skills --skill brainstorming → filter actually filters (other skills absent)", { timeout: TIMEOUT }, () => {
+      const proj = setupProject(tarballPath!);
+      const r = runCli(proj, ["install", "skills", "--skill", "brainstorming"]);
+      assert.equal(
+        r.status,
+        0,
+        `install skills --skill brainstorming exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+      );
+      // brainstorming must be present — otherwise the filter-leak
+      // check below would pass vacuously if the whole install silently
+      // errored out and produced no skills dir at all.
+      assert.ok(findSkillDir(proj, "brainstorming"), "brainstorming dir missing (filter test would be vacuous)");
+      // A random non-selected workflow skill must NOT be present —
+      // proves the filter isn't a silent no-op that installs everything.
+      assert.ok(
+        !findSkillDir(proj, "test-driven-development"),
+        "non-selected skill leaked through filter: test-driven-development",
+      );
+    });
+
+    test(
+      "install --all → workflow + skills + plugins + hooks all present",
+      { skip: CLAUDE_AVAILABLE ? undefined : "requires 'claude' CLI", timeout: TIMEOUT },
+      () => {
+        const proj = setupProject(tarballPath!);
+        const r = runCli(proj, ["install", "--all"]);
+        // `install --all` may exit 2 on partial success. Accept 0 as
+        // strict pass, 2 as soft pass only if every must-have category
+        // artifact landed — per-category assertions below catch the
+        // silent-failure regression where one category errors inside
+        // the loop and the test otherwise accepts "mostly green".
+        if (r.status !== 0 && r.status !== 2) {
+          assert.fail(`install --all exited ${r.status}.\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
+        }
+
+        const claudeMd = path.join(proj, "CLAUDE.md");
+        assert.ok(fs.existsSync(claudeMd) && fs.statSync(claudeMd).size > 0, "CLAUDE.md missing/empty (workflow category)");
+
+        assert.ok(findSkillFile(proj, "brainstorming"), "brainstorming SKILL.md missing (skills category)");
+
+        // Plugins category: `.claude/settings.json` exists AND mentions
+        // auriga-go. Gated above by CLAUDE_AVAILABLE so claude plugins
+        // install can actually write it.
+        const settings = path.join(proj, ".claude", "settings.json");
+        assert.ok(fs.existsSync(settings), ".claude/settings.json missing (plugins category)");
+        assert.match(
+          fs.readFileSync(settings, "utf-8"),
+          /auriga-go/,
+          "auriga-go plugin not registered in settings.json (plugins category silent-failed)",
+        );
+
+        // Hooks category: `install --all` only installs hooks with
+        // `defaultOn: true` in the registry (notify is opt-in on
+        // purpose — macOS-only, requires brew dep). Don't assert a
+        // specific hook; instead assert at least one auriga:* marker
+        // landed, proving the hooks installer ran and merged settings.
+        // A silent hooks-category failure would leave settings.json
+        // with only the plugins marker from `claude plugins install`,
+        // which is not auriga-prefixed.
+        const settingsParsed = JSON.parse(fs.readFileSync(settings, "utf-8")) as {
+          hooks?: Record<string, Array<{ hooks: Array<{ _marker?: string }> }>>;
+        };
+        const aurigaMarkers = Object.values(settingsParsed.hooks ?? {})
+          .flatMap((events) => events.flatMap((e) => e.hooks.map((h) => h._marker)))
+          .filter((m): m is string => typeof m === "string" && m.startsWith("auriga:"));
+        assert.ok(
+          aurigaMarkers.length > 0,
+          `no auriga:* hook markers in settings.json — hooks category likely silent-failed. Got markers: ${JSON.stringify(aurigaMarkers)}`,
+        );
+      },
+    );
+  },
+);

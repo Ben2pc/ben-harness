@@ -125,9 +125,9 @@ Re-running the installer preserves your customized `config.json` and `icon.png`,
 
 ## Development
 
-- `npm test` — 114 unit/integration tests (~0.4s)
-- `bash tests/ship-loop.test.sh` — ship-loop Stop hook tests (22 scenarios, bash)
-- `npm run test:e2e` — full tarball install e2e suite (~100s). Packs the actual npm tarball, installs it into a scratch project, and runs `auriga-cli install` against GitHub content pinned to the current HEAD SHA. **Requires the current HEAD to be pushed to `origin` first** — the suite skips itself with a helpful message if not. The `plugins` and `--all` scenarios additionally require the `claude` CLI to be on PATH.
+- `npm test` — unit/integration tests (sub-second)
+- `bash tests/ship-loop.test.sh` — ship-loop Stop hook tests (bash)
+- `npm run test:e2e` — full tarball install e2e suite (~90-120s). Packs the actual npm tarball, installs it into a scratch project, and runs `auriga-cli install` against GitHub content pinned to the current HEAD SHA. The preflight uses `git branch -r --contains HEAD` — purely local, no network — so **HEAD must be reachable from a local remote ref** (a successful `git push` updates local remote refs synchronously; if someone else pushed, run `git fetch` first). The `plugins` and `--all` scenarios additionally require the `claude` CLI on PATH; they skip gracefully otherwise.
 
 ## License
 
