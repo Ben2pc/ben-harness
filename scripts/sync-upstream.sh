@@ -33,7 +33,11 @@ SKILLS=(
 )
 
 echo "→ Fetching g-claude-code-plugins submodule to tracked branch HEAD..."
-git submodule update --remote external/g-claude-code-plugins
+# --init: on a fresh clone the submodule is registered in .gitmodules but
+# not yet checked out. Without --init, `update --remote` silently no-ops
+# for uninitialized submodules and the script reports up-to-date without
+# ever syncing — script must work end-to-end on clean environments.
+git submodule update --init --remote external/g-claude-code-plugins
 
 echo ""
 echo "→ Re-syncing tracked skills..."
