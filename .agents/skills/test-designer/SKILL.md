@@ -99,10 +99,11 @@ Constraints:
 
 Before handing the tests to the implementation phase:
 
-1. **Run the tests** — they should FAIL (red). Tests that pass on empty/wrong implementations are useless.
+1. **Run the tests** — they should FAIL (red), **and fail for the reason the rationale predicts**. A test that fails on `ImportError`, missing fixture, syntax error, or "module not found" is fake red — the test isn't actually exercising the behavior it claims to. Fix the test or drop it.
 2. **Scan the rationale** — does each test catch a distinct failure mode? Drop duplicates.
 3. **Check coverage** — are all edge case categories represented? Request additions if not.
 4. **Confirm the test framework matches** — ensure the dispatched agent used the right runner / assertion lib / fixtures.
+5. **Check for shape-to-example tests** — a test that asserts on specific happy-path values (e.g., "output equals exactly `[1, 2, 3]` for this fixture") is shaping the test to the example, not to the requirement. Such a test passes when the implementation matches the fixture and breaks for any valid variant input. Replace with property-style assertions ("output is sorted and contains all input elements") or add a second test with a different input that exercises the same property.
 
 ### Step 5: Hand off to implementation
 
@@ -121,6 +122,8 @@ Require the agent to return:
 - ❌ Passing the work-in-progress branch contents to the dispatched agent — defeats Independent Evaluation
 - ❌ Accepting tests that pass against an empty implementation — those tests don't constrain anything
 - ❌ Skipping Step 4 validation — unvalidated tests get merged as fake green
+- ❌ Accepting "shape-to-example" tests — a test that asserts on specific happy-path values from the requirement's example data passes whenever input==fixture and breaks for any variant. Use property assertions (sorted, idempotent, contains-all-inputs) or pair the example test with a variant-input test that exercises the same invariant
+- ❌ Accepting fake red — a test that fails on `ImportError`, missing fixture, or "module not found" looks red but isn't testing anything. Step 4 must verify the test fails for the reason the rationale predicts
 
 ## Relationship to other skills
 

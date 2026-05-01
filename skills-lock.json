@@ -4,61 +4,73 @@
     "brainstorming": {
       "source": "obra/superpowers",
       "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
       "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
     },
     "claude-code-agent": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "d8fed716acd65e533118701feea508973816fe272ce8ee8c38b84d8e5aae7a3c"
+      "skillPath": "skills/claude-code-agent/SKILL.md",
+      "computedHash": "16cfeb17ec5488b9455f5cfa2be2f73146ebd8eb9f73cefb2d87b37d7e43cd9c"
     },
     "codex-agent": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "43b9fe71a05596ffadeea1c9d4d36d0b83ac83f5be3c183664c9f3b8f8c0e519"
+      "skillPath": "skills/codex-agent/SKILL.md",
+      "computedHash": "e3d62086018ca07c0ea6b0c3618b144b962dd97874f967f064c63c04d9392997"
     },
     "deep-review": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "8458ecbb0c721d9db91e5193be429e28fa5f35cb4f127b76c9502b407efeaf2a"
+      "skillPath": "skills/deep-review/SKILL.md",
+      "computedHash": "fff120b84b5e053656679e39dfecd659f583630a29ac66e2d655e0c15bfc5163"
     },
     "parallel-implementation": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "f52bcb8647884134802b891deb06391c34f5e00523b4040b6735ae1ff173c2d0"
+      "skillPath": "skills/parallel-implementation/SKILL.md",
+      "computedHash": "f55186e8cc188159e9914349f5300120200315525cb234808515002a8ae1a80b"
     },
     "planning-with-files": {
       "source": "OthmanAdi/planning-with-files",
       "sourceType": "github",
-      "computedHash": "594e6e55f82793c309cd02f94a9a5fe73326d4b8694cbfda2b484ab410e81e88"
+      "skillPath": "skills/planning-with-files/SKILL.md",
+      "computedHash": "9e71d1927e2452d920ff5771df42cbe8ebbcf9149e08c2bf1b48fc63e1946e76"
     },
     "playwright-cli": {
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
-      "computedHash": "45b90b409fb80cf08ee4e8b72377bddacfac3d1c1fac69bff5fd5342fad26adf"
+      "skillPath": "skills/playwright-cli/SKILL.md",
+      "computedHash": "d2ea99c86b1c7c4a2800f7f1594c20b46da237a9f4fe199f6dd93d89b27faaf0"
     },
     "systematic-debugging": {
       "source": "obra/superpowers",
       "sourceType": "github",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
       "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
     },
     "test-designer": {
       "source": "Ben2pc/g-claude-code-plugins",
       "sourceType": "github",
-      "computedHash": "b797427826babf6d17867710ddb7f2330d19852f585e233a04f900f01c8eae50"
+      "skillPath": "skills/test-designer/SKILL.md",
+      "computedHash": "52b9a0e6b8c5405eaede9c8d6b1851fa7f668f36ad86d94c20988f632143f7fd"
     },
     "test-driven-development": {
       "source": "obra/superpowers",
       "sourceType": "github",
+      "skillPath": "skills/test-driven-development/SKILL.md",
       "computedHash": "126f1ebf6ccd414f42544f6e83d8cc5adb089e1108eaffb7c400701e37eecd9f"
     },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
       "computedHash": "0a413bf988d06481f69bb81df2070741c3ba12dd9f1be2706d57f259c905992d"
     },
     "verification-before-completion": {
       "source": "obra/superpowers",
       "sourceType": "github",
+      "skillPath": "skills/verification-before-completion/SKILL.md",
       "computedHash": "9b446f0c7fe1cfb560b1d34439523b1a76d5f177290007b2c053a1c749a4a8ba"
     }
   }

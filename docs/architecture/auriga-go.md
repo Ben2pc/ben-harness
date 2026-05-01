@@ -1,7 +1,7 @@
 # auriga-go — Workflow Autopilot Skill
 
 **Status**: stable · promoted from `docs/specs/` on 2026-04-19
-**Workflow version anchor**: auriga Workflow v1.4.0 (`CLAUDE.md`)
+**Workflow version anchor**: auriga Workflow v1.5.0 (`CLAUDE.md`)
 
 > This document captures the **decisions and rationale** behind auriga-go. The **live runtime contract** — modes, markers, state-file schema, strict defaults, grace-turn mechanics — lives in `plugins/auriga-go/skills/auriga-go/SKILL.md`; the ship-mode specifics (PR-comment templates, Ready/Blocked ceremonies) live in `plugins/auriga-go/skills/auriga-go/references/ship.md`. When this doc disagrees with those, the skill files win.
 

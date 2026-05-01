@@ -88,17 +88,26 @@ Common contracts:
 - **Config edit**: "Return the updated section verbatim; do not quote the entire file."
 - **Test slice**: "Return the test file plus a bullet list mapping test → requirement being verified."
 
-An unspecified format = the subagent dumps verbose context back, cancelling the dispatch benefit.
+Also decide per slice **how the main Agent will verify it landed** when the diffs come back. Pick from this menu and name the concrete commands in the slice's plan row:
+
+- targeted unit tests for the changed behavior (e.g., `npm test -- path/to/slice`)
+- type checks or lint when applicable (e.g., `tsc --noEmit`, `ruff check`)
+- build for affected packages
+- a minimal smoke test if full validation is too expensive
+
+Without a verification step named upfront, the main Agent will accept whatever the subagent claims as "done" and merge slices without a real check — that's where silent regressions enter. If a slice cannot be verified mechanically, say so in the plan and fall back to a reading-based check.
+
+An unspecified output format = the subagent dumps verbose context back, cancelling the dispatch benefit.
 
 ### Step 6: Return the plan
 
 Emit a single table the main Agent can execute against:
 
-| Slice | Writer | Model | Files | Depends on | Output format |
-|---|---|---|---|---|---|
-| 1 | subagent | inherit | `src/plugins.ts` | — | unified diff + one-line rationale |
-| 2 | subagent | inherit | `tests/plugins.test.ts` | slice 1 signature only | test file + requirement map |
-| 3 | main Agent | — | `src/cli.ts` | slice 1 complete | (inline, no dispatch) |
+| Slice | Writer | Model | Files | Depends on | Output format | Verify |
+|---|---|---|---|---|---|---|
+| 1 | subagent | inherit | `src/plugins.ts` | — | unified diff + one-line rationale | `npm test -- plugins`, `tsc --noEmit` |
+| 2 | subagent | inherit | `tests/plugins.test.ts` | slice 1 signature only | test file + requirement map | `npm test -- plugins.test` (red → green after slice 1) |
+| 3 | main Agent | — | `src/cli.ts` | slice 1 complete | (inline, no dispatch) | `npm test`, manual CLI smoke |
 
 Annotate:
 - Which slices are **parallelizable now** (no blocking deps)
@@ -131,6 +140,7 @@ The skill does none of this — it only produced the plan.
 - ❌ Forcing parallelism where the task is naturally serial — Step 1 should have terminated the skill
 - ❌ Slicing too small just to have more parallelism — Step 4's size filter is not optional
 - ❌ Attempting to coordinate subagents mid-flight via shared state — no current CLI runtime (Claude Code, Codex CLI, etc.) has an agent-to-agent channel; serialize through the main Agent or merge into a single-line task
+- ❌ Dispatching slices without anti-hardcoding language — when the slice ships a fix that has tests attached, the subagent in isolation will sometimes hardcode values, special-case test inputs, or weaken assertions to turn the slice green. The main Agent's dispatch prompt should carry a `<solution_quality>`-style guard ("implement the general logic, do not hard-code values or weaken tests; if a test looks wrong, surface it instead of patching around it") on any slice whose contract includes "make tests pass"
 
 ## Example invocation
 
@@ -153,10 +163,10 @@ Assistant (runs parallel-implementation):
   Step 5 (output contract): each subagent returns unified diff + a
                             one-sentence description of the bug it fixes
   Step 6 (plan):
-    | Slice | Writer | Model | Files | Depends on | Output format |
-    | A | subagent | inherit | src/cli.ts + tests     | — | diff + rationale |
-    | B | subagent | inherit | src/hooks.ts + tests   | — | diff + rationale |
-    | C | subagent | inherit | src/plugins.ts + tests | — | diff + rationale |
+    | Slice | Writer | Model | Files | Depends on | Output format | Verify |
+    | A | subagent | inherit | src/cli.ts + tests     | — | diff + rationale | npm test -- cli |
+    | B | subagent | inherit | src/hooks.ts + tests   | — | diff + rationale | npm test -- hooks |
+    | C | subagent | inherit | src/plugins.ts + tests | — | diff + rationale | npm test -- plugins |
   Parallelizable now: A, B, C (no gating)
 
 Main Agent:
