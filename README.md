@@ -11,7 +11,7 @@ This repo itself is a fully configured harness project. You can clone it to see 
 | Module | Description |
 |---|---|
 | **Workflow** | `CLAUDE.md` auriga workflow: requirement clarification -> TDD -> Review, Harness principles, Subagent usage guide |
-| **Skills** | Development process + orchestration skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright, deep-review, test-designer, parallel-implementation, ui-ux-pro-max |
+| **Skills** | Development process + orchestration skills — brainstorming, systematic-debugging, TDD, verification, planning, playwright, deep-review, test-designer, parallel-implementation |
 | **Recommended Skills** | Optional utility skills (e.g. `codex-agent`, `claude-code-agent`) you can add on top of the workflow skills |
 | **Plugins** | Recommended Claude Code plugins — skill-creator, claude-md-management, codex, auriga-go |
 | **Hooks** | Claude Code hooks: `notify` (macOS notification, focus-aware sound-only when terminal is frontmost — **opt-in**: not installed by `install --all`, requires `install hooks --hook notify`), `pr-create-guard` (PostToolUse body snapshot after `gh pr create`), `pr-ready-guard` (PreToolUse block on stray planning docs / active specs in `docs/specs/` / unpushed commits before `gh pr ready`) |
@@ -81,7 +81,6 @@ Installs selected skills via `npx skills add`, targeting both Claude Code and Co
 | verification-before-completion | [obra/superpowers](https://github.com/obra/superpowers) | Pre-completion verification — evidence before assertions |
 | planning-with-files | [OthmanAdi/planning-with-files](https://github.com/OthmanAdi/planning-with-files) | File-based task planning and progress tracking |
 | playwright-cli | [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli) | Browser automation and testing |
-| ui-ux-pro-max | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | UI/UX design and development enhancement |
 | deep-review | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | Multi-dimensional PR review orchestrator (required + conditional reviewers + punch list) |
 | test-designer | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | Independent-Evaluation test designer for TDD red phase |
 | parallel-implementation | [Ben2pc/g-claude-code-plugins](https://github.com/Ben2pc/g-claude-code-plugins) | Slice planner for parallel multi-subagent code writing |
