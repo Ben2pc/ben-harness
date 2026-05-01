@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Sync upstream skills + submodule pointer in one shot.
+# Sync upstream skills in one shot.
 #
-# Replaces the two-step manual dance of:
-#   git submodule update --remote external/g-claude-code-plugins
-#   npx skills add <repo> --skill <name> --agent claude-code codex --yes  # for each tracked skill
+# Replaces the manual loop of:
+#   npx skills add <repo> --skill <name> --agent claude-code codex --yes
 #
 # Invoked via: npm run sync-upstream
 #
@@ -32,14 +31,6 @@ SKILLS=(
   test-designer
 )
 
-echo "→ Fetching g-claude-code-plugins submodule to tracked branch HEAD..."
-# --init: on a fresh clone the submodule is registered in .gitmodules but
-# not yet checked out. Without --init, `update --remote` silently no-ops
-# for uninitialized submodules and the script reports up-to-date without
-# ever syncing — script must work end-to-end on clean environments.
-git submodule update --init --remote external/g-claude-code-plugins
-
-echo ""
 echo "→ Re-syncing tracked skills..."
 for skill in "${SKILLS[@]}"; do
   echo "  • $skill"
@@ -64,5 +55,5 @@ echo ""
 echo "Next steps:"
 echo "  1. Review:  git diff"
 echo "  2. Branch:  git checkout -b chore/sync-upstream-\$(date +%Y%m%d)"
-echo "  3. Commit:  git add -A && git commit -m 'chore: sync upstream skills + submodule'"
+echo "  3. Commit:  git add -A && git commit -m 'chore: sync upstream skills'"
 echo "  4. PR:      gh pr create --fill && gh pr merge --squash --delete-branch"
