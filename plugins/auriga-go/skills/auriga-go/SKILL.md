@@ -88,7 +88,7 @@ Name the phase (in `CLAUDE.md`'s own terms) + the action or skill to invoke. Exa
 **Mandatory emissions before recommending green-phase code work** — at the TDD red phase + parallel-implementation decision points named in CLAUDE.md. Both must be recorded in the task tracker as a single line each, *before* recommending any Write/Edit on production code:
 
 1. Change-size estimate: `<N> module(s), <M> file(s), ~<L> lines/file` — the input the parallel-implementation thresholds key off of.
-2. `test-designer` applicability: `Y/N — <one-line reason>` — the TDD-phase "complex feature" judgment.
+2. `test-designer` applicability: `Y/N — <one-line reason>` — the TDD-phase test-designer-applicability judgment (predicates a/b/c in the CLAUDE.md TDD phase).
 
 These exist so the **skip** decisions at those two phases are auditable. CLAUDE.md's own escape hatch ("below thresholds, write inline — multi-agent overhead outweighs the gain") is legitimate; what is not legitimate is skipping silently. If either emission is missing when green-phase code lands, treat it as workflow drift on the next pass.
 

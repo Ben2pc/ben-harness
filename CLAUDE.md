@@ -72,7 +72,7 @@ In-conversation subagents share the main Agent's working directory. Key rules:
 
 - **Isolate parallel writes**: Parallel code writing **must** use `isolation: "worktree"`; single writer needs no isolation. For slicing decisions (what to split, where it collides, when to skip dispatch), use the `parallel-implementation` skill — it encodes the file-assignment, collision-merge, and size-filter rules that used to live here.
 - **Match model and effort to task**: Pick the model (sonnet/opus, gpt-5.4/gpt-5.4-mini) and effort per task. **Effort defaults: `xhigh` for coding / agentic subagent writes; `high` for design + formal review; `medium` only for short scoped lookups; `max` only when `xhigh` under-thinks.** Opus 4.7 strictly respects `low`/`medium` — under-thinking risk on complex tasks at those levels.
-  - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet @ medium
+  - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet @ xhigh
   - ✅ "Design the plugin dependency resolution strategy" → opus @ xhigh
   - ✅ Complex review with many architectural trade-offs → GPT 5.4 @ high for cross-model blind spot coverage
 - **Always specify the output format** (shape + scope/length): a subagent without a format contract will dump verbose context back, cancelling the context benefit of dispatching. The rule is "must be explicit" — the specific format is task-dependent (e.g., "summary ≤300 words", "punch list, one finding per line", "diff + one-line rationale each", "structured JSON `{...}`", "one-paragraph verdict + one-line rationale"). Don't enumerate formats; pick the right one per task.

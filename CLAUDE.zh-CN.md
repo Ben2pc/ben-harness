@@ -20,7 +20,7 @@
 
 10. PR就绪：在验证完成、基准分支确认无误，并且 PR 描述已补全变更范围、验收标准、风险和剩余 TODO 之前，保持 PR 为 Draft。完成这些条件后，将 PR 标记为 Ready for Review。如果 `brainstorming` 或 `planning-with-files` 产生了设计文档（specs）、findings.md、progress.md、task_plan.md 等产物，用 `AskUserQuestion` 询问用户：删除还是存档到 `docs/worklog/worklog-<YYYY-MM-DD>-<分支名>/` 目录下便于回溯。
 
-11. PR评审：Draft PR 阶段可以先获取早期反馈。PR 标记为 Ready for Review 后，正式 review 必须通过 `deep-review` skill 发起。`/review` 保留作为轻量 fallback。**评审 Agent 必须报告所有 finding 并附 severity + confidence，不要按重要性预过滤** —— Opus 4.7 会字面执行 "only report high-severity" 类指令，导致真实 bug 召回下降；过滤交给人来做。
+11. PR评审：Draft PR 阶段可以先获取早期反馈。PR 标记为 Ready for Review 后，正式 review 必须通过 `deep-review` skill 发起。`/review` 保留作为轻量 fallback。**评审 Agent 必须报告所有 finding 并附 severity + confidence，不要按重要性预过滤**——Opus 4.7 会字面执行 "only report high-severity" 类指令，导致真实 bug 召回下降；过滤交给人来做。
 
 ## 快速开发流程（bug fix / 小重构 / 小功能）
 
@@ -71,8 +71,8 @@
 对话内 subagent 共享主 Agent 的工作目录。核心规则：
 
 - **并行写必须隔离**：并行写代码**必须**使用 `isolation: "worktree"`；单个写者无需隔离。切片决策（怎么切、在哪会撞、什么时候不派）交给 `parallel-implementation` skill——它内置了文件归属、碰撞合并、大小过滤等过去写在这里的规则。
-- **按任务选模型和 effort**：模型（sonnet/opus、gpt-5.4/gpt-5.4-mini）与 effort 按任务选。**Effort 默认值：写代码 / agentic 子任务用 `xhigh`；设计与正式评审用 `high`；只有短小、范围明确的查询才用 `medium`；只有当 `xhigh` 仍欠思考时才升 `max`。** Opus 4.7 严格遵守 `low` / `medium` 力度，复杂任务用低力度有 under-thinking 风险。
-  - ✅ "给 cli.ts 的 `parseArgs()` 加输入校验" → sonnet @ medium
+- **按任务选模型和 effort**：模型（sonnet/opus、gpt-5.4/gpt-5.4-mini）与 effort 按任务选。**Effort 默认值：写代码 / agentic 子任务用 `xhigh`；设计与正式评审用 `high`；只有短小、范围明确的查询才用 `medium`；只有当 `xhigh` 仍欠思考时才升 `max`。** Opus 4.7 严格遵守 `low` / `medium` 力度，复杂任务用低力度有欠思考风险。
+  - ✅ "给 cli.ts 的 `parseArgs()` 加输入校验" → sonnet @ xhigh
   - ✅ "设计插件依赖解析策略" → opus @ xhigh
   - ✅ 涉及大量架构权衡的复杂 review → GPT 5.4 @ high，跨模型盲区覆盖
 - **始终显式指定输出格式**（shape + scope/length）：规则本身只约束"必须显式"——具体格式按任务选，例如 "summary ≤300 字"、"punch list，每项一行"、"diff + 每处一行理由"、"结构化 JSON `{...}`"、"一段话判断 + 一行依据"。不穷举格式清单，按任务选合适的。

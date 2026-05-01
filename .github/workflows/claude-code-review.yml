@@ -37,10 +37,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Keep submodules available so future PRs that bump the
-          # g-claude-code-plugins pointer can be reviewed with their
-          # referenced content actually present on the runner.
-          submodules: recursive
 
       - name: Ensure deep-review skill is available
         # This workflow may ship to repos that don't have the
