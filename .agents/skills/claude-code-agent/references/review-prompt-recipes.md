@@ -12,11 +12,19 @@ Review the requested changes for material correctness, regression risk, and miss
 Focus on the provided repository context only.
 </task>
 
+<coverage_over_filtering>
+Treat this pass as a coverage stage, not a filtering stage.
+Report every issue you find, including low-severity ones and ones you are uncertain about.
+Attach a severity and a confidence label to each finding so a downstream step can rank or drop them.
+It is better to surface a finding that later gets filtered out than to silently drop a real bug.
+</coverage_over_filtering>
+
 <structured_output_contract>
 Return:
-1. findings ordered by severity
-2. supporting evidence for each finding
-3. brief next steps
+1. findings ordered by severity then confidence
+2. severity and confidence labels per finding
+3. supporting evidence for each finding
+4. brief next steps
 </structured_output_contract>
 
 <grounding_rules>
@@ -25,7 +33,7 @@ If a point is an inference, label it clearly.
 </grounding_rules>
 
 <verification_loop>
-Before finalizing, make sure each finding is material and actionable.
+Before finalizing, check that each finding has supporting evidence rather than being dropped on a confidence judgement alone.
 </verification_loop>
 ```
 

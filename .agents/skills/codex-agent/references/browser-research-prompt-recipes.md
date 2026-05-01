@@ -59,6 +59,19 @@ Append this when the user wants a concise Chinese write-up:
 Write the final summary in Chinese. Keep observed facts, inferred conclusions, and remaining uncertainties clearly separated.
 ```
 
+## Retrieval Budget
+
+Append this when you want to keep the browser session focused and not balloon into open-ended browsing:
+
+```text
+Treat each search or page open as a budgeted action. Start with one broad search using short discriminative keywords. Move on to detail or open another page only when:
+- the current view does not answer the core question
+- a required fact, source, date, owner, or ID is missing
+- the user asked for breadth or comparison
+- a specific document, link, or post must be inspected
+Do not keep browsing to improve phrasing, gather nonessential color, or support claims that can safely be made more generic. Stop as soon as you have enough citable evidence to answer.
+```
+
 ## Safety Tail
 
 Append this when you want a stronger browser-only boundary:

@@ -91,10 +91,10 @@ Aggregate all reviewer outputs into a single report:
 **Tags**: <logic|ui|...>  |  **Reviewers dispatched**: <list>
 
 ### Blocking issues
-- [ ] <file:line> — <one-line finding> (<reviewer>)
+- [ ] <file:line> — <one-line finding> — [confidence: high|med|low] (<reviewer>)
 
 ### Non-blocking suggestions
-- [ ] <file:line> — <one-line finding> (<reviewer>)
+- [ ] <file:line> — <one-line finding> — [confidence: high|med|low] (<reviewer>)
 
 ### Architectural observations
 - <observation and recommended tracking action>
@@ -105,15 +105,24 @@ Aggregate all reviewer outputs into a single report:
 - **Non-blocking** = maintainability / style / minor perf / documented spec ambiguity
 - **Architectural** = decay worth tracking as a separate issue (don't bundle risky, out-of-scope changes into a review-cycle PR)
 
+**Confidence handling at synthesis time**:
+- When two reviewers report the same root cause at the same `file:line`, keep the higher-confidence wording and drop the duplicate (don't double-count)
+- Within each category, sort by confidence (high → low), then by severity
+- Low-confidence findings stay in the report — they are signal for the human reviewer; do not silently drop them at synthesis. If a low-confidence finding is genuinely too speculative to act on, move it to Architectural observations rather than deleting it
+
 ## Output Format (for each dispatched reviewer)
 
 **Every reviewer subagent must be told how to report back.** Do not rely on defaults — subagents will otherwise dump raw context.
 
 Default prompt contract for each reviewer:
 
-> Return a summary of **at most 300 words** followed by a bullet list of findings. Each finding: `<file>:<line> — <one-line description> — [severity: blocking | non-blocking]`. Do not include code excerpts longer than 5 lines. Do not restate the diff. If no issues found, return exactly: `"No findings."`
+> Treat this pass as a coverage stage, not a filtering stage. Report every issue you find, including ones you are uncertain about or consider low-severity — a separate synthesis step will rank or drop them. It is better to surface a finding that later gets filtered out than to silently drop a real bug.
+>
+> Return a summary of **at most 300 words** followed by a bullet list of findings. Each finding: `<file>:<line> — <one-line description> — [severity: blocking | non-blocking] — [confidence: high | medium | low]`. Do not include code excerpts longer than 5 lines. Do not restate the diff. Return `"No findings."` only when you genuinely found nothing — not as a shortcut to skip low-severity or low-confidence reporting.
 
 Reviewers that merge two lenses (Robustness, Code Quality) should group findings under a sub-heading per lens so the synthesis step can classify them independently. Adjust the word budget per reviewer as needed (e.g., split-out Security may justify a longer explanation for a single high-severity finding).
+
+The coverage-first framing matters specifically because newer reasoning models (Opus 4.7 and similar) follow filtering instructions like "only report high-severity issues" faithfully — they investigate just as deeply, then convert fewer investigations into reported findings. Push the filtering to the synthesis step (below), where you have all reviewers' findings in front of you and can rank them with full context.
 
 ## Runtime: subagent vs independent Agent
 
@@ -142,6 +151,7 @@ After synthesis:
 - ❌ Reviewing Draft PRs formally — draft is for informal early feedback; wait for Ready
 - ❌ Feeding the Spec Conformance reviewer the Agent's own commit messages, PR body rationale, or "autonomous decisions" sections — those bias it toward confirming the writer's reading. Spec + diff only
 - ❌ Splitting already-merged dimensions (running separate Consistency and Maintainability, or separate Security and Edge-cases) unless the `auth-sensitive` sub-tag fires — the merge is a deliberate token-cost optimization that preserves every original checklist item
+- ❌ Telling reviewers "only report high-severity issues", "be conservative", or "don't nitpick" — newer reasoning models (Opus 4.7 and similar) follow this faithfully and silently drop real findings. Filtering belongs at the synthesis step where you can see all reviewers' findings in context, not at the per-reviewer step where each reviewer is missing the cross-reviewer signal
 
 ## Example invocation
 
