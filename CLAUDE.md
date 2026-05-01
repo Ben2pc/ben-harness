@@ -1,4 +1,4 @@
-# auriga Workflow (v1.4.0)
+# auriga Workflow (v1.5.0)
 
 1. Requirement Clarification: Use `brainstorming` to clarify requirements for new features. **Requirements should focus on "what to do" and acceptance criteria, not specific technical paths.** For product features, prioritize "Why" and let the implementation-stage Agent decide how.
 
@@ -12,7 +12,7 @@
 
 6. Pre-coding 4: When encountering bugs, test failures, or unexpected behavior, follow `systematic-debugging` to find root cause before fixing.
 
-7. TDD: Non-trivial code changes follow `test-driven-development`: write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. For complex features, invoke the `test-designer` skill — it encodes **Independent Evaluation**, dispatching a context-free agent that sees only the requirement and code paths (not the implementation approach) and returns executable failing tests at highest reasoning effort.
+7. TDD: All code changes follow `test-driven-development` (sole exception defined in the Quick Development Flow section: pure docs / pure config). Write a failing test first, then minimal implementation, then regression verification. **Define testable acceptance criteria before each task** (specific features + acceptance conditions + edge cases) — don't check at the end. Invoke the `test-designer` skill when **any** of: (a) requirement spans ≥2 modules with non-obvious interactions; (b) edge cases would be hard for the implementation Agent to fairly self-test; (c) you'd otherwise skip TDD because "the implementation looks more obvious than the tests". The skill encodes **Independent Evaluation**, dispatching a context-free agent that sees only the requirement and code paths (not the implementation approach) and returns executable failing tests at highest reasoning effort.
 
 8. Parallel Implementation: During the green phase, invoke `parallel-implementation` **only** when one of these fires: (a) **greenfield 0→1 across multiple independent modules** — plan a layered parallel split; (b) change touches **≥3 modules** — use `AskUserQuestion` to confirm with the user before dispatching; (c) change touches **≥5 files each with >50 lines of diff** — recommend parallel. The skill returns a slice plan (file assignments, dependencies, per-slice output-format contracts); dispatch with parallel `Agent` calls + `isolation: "worktree"` per plan. Below these thresholds, write it inline — multi-agent overhead outweighs the gain.
 
@@ -20,7 +20,7 @@
 
 10. PR Readiness: Keep the PR in Draft until verification is complete, the base branch is confirmed, and the PR description is updated with scope, acceptance criteria, risks, and remaining TODOs. Then mark the PR Ready for Review. If `brainstorming` or `planning-with-files` produced design docs (specs), findings.md, progress.md, task_plan.md, etc., use `AskUserQuestion` to ask the user: delete or archive to `docs/worklog/worklog-<YYYY-MM-DD>-<branch-name>/` for traceability.
 
-11. PR Review: Early feedback may happen on a Draft PR. After the PR is Ready for Review, formal review must use the `deep-review` skill. `/review` remains as a lightweight fallback.
+11. PR Review: Early feedback may happen on a Draft PR. After the PR is Ready for Review, formal review must use the `deep-review` skill. `/review` remains as a lightweight fallback. **Reviewer Agents must report every finding with severity + confidence, not pre-filter by importance** — Opus 4.7 follows "only report high-severity" type instructions literally, which lowers recall on real bugs; let the human do the filtering.
 
 ## Quick Development Flow (bug fix / small refactor / small feature)
 
@@ -71,8 +71,8 @@ Choose the right level of delegation:
 In-conversation subagents share the main Agent's working directory. Key rules:
 
 - **Isolate parallel writes**: Parallel code writing **must** use `isolation: "worktree"`; single writer needs no isolation. For slicing decisions (what to split, where it collides, when to skip dispatch), use the `parallel-implementation` skill — it encodes the file-assignment, collision-merge, and size-filter rules that used to live here.
-- **Match model and effort to task**: Flexibly choose model (sonnet/opus, gpt-5.4/gpt-5.4-mini) and effort level based on task complexity.
-  - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet
-  - ✅ "Design the plugin dependency resolution strategy" → opus
-  - ✅ Complex review with many architectural trade-offs → GPT 5.4 with high effort for cross-model blind spot coverage
+- **Match model and effort to task**: Pick the model (sonnet/opus, gpt-5.4/gpt-5.4-mini) and effort per task. **Effort defaults: `xhigh` for coding / agentic subagent writes; `high` for design + formal review; `medium` only for short scoped lookups; `max` only when `xhigh` under-thinks.** Opus 4.7 strictly respects `low`/`medium` — under-thinking risk on complex tasks at those levels.
+  - ✅ "Add input validation to `parseArgs()` in cli.ts" → sonnet @ medium
+  - ✅ "Design the plugin dependency resolution strategy" → opus @ xhigh
+  - ✅ Complex review with many architectural trade-offs → GPT 5.4 @ high for cross-model blind spot coverage
 - **Always specify the output format** (shape + scope/length): a subagent without a format contract will dump verbose context back, cancelling the context benefit of dispatching. The rule is "must be explicit" — the specific format is task-dependent (e.g., "summary ≤300 words", "punch list, one finding per line", "diff + one-line rationale each", "structured JSON `{...}`", "one-paragraph verdict + one-line rationale"). Don't enumerate formats; pick the right one per task.
