@@ -22,7 +22,6 @@ const LOCK: SkillsLock["skills"] = {
   "parallel-implementation": stub("Ben2pc/g-claude-code-plugins"),
   "planning-with-files": stub("OthmanAdi/planning-with-files"),
   "playwright-cli": stub("microsoft/playwright-cli"),
-  "ui-ux-pro-max": stub("nextlevelbuilder/ui-ux-pro-max-skill"),
 };
 
 describe("planSkillInstallCommands", () => {
@@ -85,7 +84,7 @@ describe("planSkillInstallCommands", () => {
 
   test("every distinct source yields one batch", () => {
     const batches = planSkillInstallCommands(Object.keys(LOCK), LOCK, "");
-    assert.equal(batches.length, 5); // 5 distinct sources in LOCK
+    assert.equal(batches.length, 4); // 4 distinct sources in LOCK
   });
 
   test("globalFlag threads into every command", () => {

@@ -34,8 +34,8 @@ describe("generateCatalog (build-time)", () => {
     assert.ok(typeof catalog.generatedAt === "string" && catalog.generatedAt.length > 0);
   });
 
-  test("workflow skills: 10 entries matching WORKFLOW_SKILLS", () => {
-    assert.equal(catalog.workflowSkills.length, 10);
+  test("workflow skills: 9 entries matching WORKFLOW_SKILLS", () => {
+    assert.equal(catalog.workflowSkills.length, 9);
     const names = catalog.workflowSkills.map((e) => e.name).sort();
     assert.deepEqual(names, [
       "brainstorming",
@@ -46,7 +46,6 @@ describe("generateCatalog (build-time)", () => {
       "systematic-debugging",
       "test-designer",
       "test-driven-development",
-      "ui-ux-pro-max",
       "verification-before-completion",
     ]);
     assertEntriesShape(catalog.workflowSkills, "workflowSkills");
@@ -78,10 +77,7 @@ describe("generateCatalog (build-time)", () => {
     assertEntriesShape(catalog.hooks, "hooks");
   });
 
-  test("descriptions survive YAML multi-line / escaped quotes (ui-ux-pro-max, parallel-implementation)", () => {
-    const uiux = catalog.workflowSkills.find((e) => e.name === "ui-ux-pro-max");
-    assert.ok(uiux);
-    assert.match(uiux.description, /UI\/UX design intelligence/);
+  test("descriptions survive YAML escaped quotes (parallel-implementation)", () => {
     const pi = catalog.workflowSkills.find((e) => e.name === "parallel-implementation");
     assert.ok(pi);
     assert.match(pi.description, /parallel subagents/);

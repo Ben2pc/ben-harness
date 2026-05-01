@@ -16,7 +16,6 @@ export const WORKFLOW_SKILLS = [
   "systematic-debugging",
   "test-designer",
   "test-driven-development",
-  "ui-ux-pro-max",
   "verification-before-completion",
 ];
 
